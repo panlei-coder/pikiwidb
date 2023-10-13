@@ -1,5 +1,3 @@
-# vim temp files
-*.swp
 # Compiled Object files
 *.slo
 *.lo
@@ -7,9 +5,6 @@
 *.obj
 *pb.cc
 *pb.h
-build
-cmake-build-debug
-cmake-build-release
 
 # Precompiled Headers
 *.gch
@@ -20,9 +15,12 @@ cmake-build-release
 *.dylib
 *.dll
 
+# Fortran module files
+*.mod
 
 # Compiled Static libraries
-*.lai *.la
+*.lai
+*.la
 *.a
 *.lib
 
@@ -35,41 +33,18 @@ cmake-build-release
 make_config.mk
 log/
 lib/
+tools/
 output/
 
 # DB
 db/
 dump/
-src/dbsync/
 
 # third party
 gdb.txt
 tags
 
-# IDE
-.vscode
-
-# generate
 make_config.mk
 src/*.d
 src/build_version.cc
 
-#cache
-.cache
-
-.idea/
-
-
-#build
-build/
-buildtrees
-deps
-
-#develop container
-.devcontainer
-
-# include codis fe javascript lib files
-!codis/cmd/fe/assets/**
-
-tests/tmp
-bin
