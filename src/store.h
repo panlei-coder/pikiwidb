@@ -17,6 +17,7 @@
 #include <map>
 #include <memory>
 #include <vector>
+#include <tbb/concurrent_hash_map.h>
 
 namespace pikiwidb {
 
@@ -79,7 +80,8 @@ struct PObject {
 
 class PClient;
 
-using PDB = std::unordered_map<PString, PObject, my_hash, std::equal_to<PString> >;
+// using PDB = std::unordered_map<PString, PObject, my_hash, std::equal_to<PString> >;
+using PDB = tbb::concurrent_hash_map<PString, PObject, my_hash_compare>;
 
 const int kMaxDBNum = 65536;
 
@@ -171,7 +173,8 @@ class PStore {
     int LoopCheck(uint64_t now);
 
    private:
-    using P_EXPIRE_DB = std::unordered_map<PString, uint64_t, my_hash, std::equal_to<PString> >;
+    // using P_EXPIRE_DB = std::unordered_map<PString, uint64_t, my_hash, std::equal_to<PString> >;
+    using P_EXPIRE_DB = tbb::concurrent_hash_map<PString, uint64_t, my_hash_compare>;
     P_EXPIRE_DB expireKeys_;  // all the keys to be expired, unordered.
   };
 
@@ -187,7 +190,8 @@ class PStore {
 
    private:
     using Clients = std::list<std::tuple<std::weak_ptr<PClient>, uint64_t, ListPosition> >;
-    using WaitingList = std::unordered_map<PString, Clients>;
+    // using WaitingList = std::unordered_map<PString, Clients>;
+    using WaitingList = tbb::concurrent_hash_map<PString, Clients>;
 
     WaitingList blockedClients_;
   };
@@ -200,7 +204,8 @@ class PStore {
   std::vector<BlockedClients> blockedClients_;
   std::vector<std::unique_ptr<PDumpInterface> > backends_;
 
-  using ToSyncDB = std::unordered_map<PString, const PObject*, my_hash, std::equal_to<PString> >;
+  // using ToSyncDB = std::unordered_map<PString, const PObject*, my_hash, std::equal_to<PString> >;
+  using ToSyncDB = tbb::concurrent_hash_map<PString, const PObject*, my_hash_compare>;
   std::vector<ToSyncDB> waitSyncKeys_;
   int dbno_ = -1;
 };
