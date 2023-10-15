@@ -21,3 +21,24 @@
 [2023-10-15 17:48:52.416 #89364 tcp_listener.cc:24 info] close tcp listener fd 9
 [2023-10-15 17:48:52.417 #89364 io_thread_pool.cc:133 info] Process stopped, goodbye...
 [2023-10-15 17:48:52.417 #89364 pikiwidb.cc:245 info] server exit running
+[2023-10-15 19:29:41.090 #9476 pikiwidb.cc:266 info] pikiwidb server start...
+[2023-10-15 19:29:41.091 #9476 tcp_listener.cc:53 info] tcp listen on port 127.0.0.1:9221
+[2023-10-15 19:29:41.091 #9476 io_thread_pool.cc:113 info] Process starting...
+[2023-10-15 19:29:41.091 #9476 io_thread_pool.cc:183 info] loop 0x55c29b7143b0, name pikiwi-main_1
+[2023-10-15 19:29:41.091 #9476 io_thread_pool.cc:183 info] loop 0x55c29b7166d0, name pikiwi-main_2
+[2023-10-15 19:29:41.091 #9476 io_thread_pool.cc:208 info] loop 0x55c29b716a60, name pikiwi-main-slave_1
+[2023-10-15 19:29:41.091 #9476 io_thread_pool.cc:208 info] loop 0x55c29b716b80, name pikiwi-main-slave_2
+[2023-10-15 19:29:58.718 #9476 tcp_listener.cc:87 info] new conn fd 30 from 127.0.0.1:36660
+[2023-10-15 19:29:58.718 #9477 tcp_connection.cc:179 info] HandleConnect success with 127.0.0.1:36660
+[2023-10-15 19:29:58.718 #9477 pikiwidb.cc:160 info] New connection from 127.0.0.1:36660
+[2023-10-15 19:29:58.718 #9477 client.cc:185 debug] client 7, cmd command
+[2023-10-15 19:30:02.552 #9477 client.cc:185 debug] client 7, cmd set
+[2023-10-15 19:30:04.472 #9477 client.cc:185 debug] client 7, cmd get
+[2023-10-15 19:30:09.424 #9477 client.cc:185 debug] client 7, cmd set
+[2023-10-15 19:30:11.240 #9477 client.cc:185 debug] client 7, cmd get
+[2023-10-15 19:47:13.511 #9477 tcp_connection.cc:312 info] TcpConnection::OnEvent 11, state 2, obj 0x7fbba8001510
+[2023-10-15 19:47:13.511 #9477 pikiwidb.cc:170 info] disconnect from 127.0.0.1
+[2023-10-15 19:47:13.511 #9477 tcp_connection.cc:33 info] close tcp fd 30
+[2023-10-15 19:47:15.692 #9476 tcp_listener.cc:24 info] close tcp listener fd 9
+[2023-10-15 19:47:15.692 #9476 io_thread_pool.cc:133 info] Process stopped, goodbye...
+[2023-10-15 19:47:15.692 #9476 pikiwidb.cc:245 info] server exit running

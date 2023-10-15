@@ -373,7 +373,6 @@ void PStore::Init(int dbNum) {
     dbNum = kMaxDBNum;
   }
 
-  // dbs_.resize(dbNum,std::make_unique<PDB>());
   dbs_.reserve(dbNum); 
   for (size_t i = 0; i < dbNum; ++i) {
       dbs_.push_back(std::make_unique<PDB>());
@@ -405,7 +404,7 @@ int PStore::SelectDB(int dbno) {
 int PStore::GetDB() const { return dbno_; }
 
 const PObject* PStore::GetObject(const PString& key) const {
-  auto db = dbs_[dbno_].get();
+  auto& db = dbs_[dbno_];
   // PDB::const_iterator it(db->find(key));
   PDB::const_accessor hash_accessor;
   if (db->find(hash_accessor,key)) {
@@ -450,7 +449,7 @@ const PObject* PStore::GetObject(const PString& key) const {
 }
 
 bool PStore::DeleteKey(const PString& key) {
-  auto db = dbs_[dbno_].get();
+  auto& db = dbs_[dbno_];
   // add to dirty queue
   if (!waitSyncKeys_.empty()) {
     ToSyncDB::accessor hash_accessor;
@@ -476,7 +475,7 @@ PType PStore::KeyType(const PString& key) const {
   return PType(obj->type);
 }
 
-static bool RandomMember(const PDB* hash, PString& res, PObject** val) {
+static bool RandomMember(const std::unique_ptr<PDB>& hash, PString& res, PObject** val) {
   // PDB::const_local_iterator it = RandomHashMember(hash);
 
   // if (it != PDB::const_local_iterator()) {
@@ -505,7 +504,7 @@ static bool RandomMember(const PDB* hash, PString& res, PObject** val) {
 PString PStore::RandomKey(PObject** val) const {
   PString res;
   if (!dbs_.empty() && !dbs_[dbno_]->empty()) {
-    RandomMember(dbs_[dbno_].get(), res, val);
+    RandomMember(dbs_[dbno_], res, val);
   }
 
   return res;
@@ -517,7 +516,7 @@ size_t PStore::ScanKey(size_t cursor, size_t count, std::vector<PString>& res) c
   }
 
   std::vector<PDB::const_iterator> iters;
-  size_t newCursor = ScanConcurrentHashMember(dbs_[dbno_].get(), cursor, count, iters);
+  size_t newCursor = ScanConcurrentHashMember(dbs_[dbno_], cursor, count, iters);
 
   res.reserve(iters.size());
   for (auto it : iters) {
@@ -567,7 +566,7 @@ PError PStore::getValueByType(const PString& key, PObject*& value, PType type, b
 }
 
 PObject* PStore::SetValue(const PString& key, PObject&& value) {
-  auto db = dbs_[dbno_].get();
+  auto& db = dbs_[dbno_];
   
   // (*db)[key] = std::move(value);
   // PObject& obj = (*db)[key];
@@ -616,11 +615,6 @@ void PStore::InitExpireTimer() {
 
 void PStore::ResetDB() {
   std::vector<std::unique_ptr<PDB> >(dbs_.size()).swap(dbs_);
-
-  // std::vector<std::unique_ptr<PDB> > emptyDBs;
-  // emptyDBs.reserve(dbs_.size());
-  // std::swap(emptyDBs, dbs_);
-
   std::vector<ExpiredDB>(expiredDBs_.size()).swap(expiredDBs_);
   std::vector<BlockedClients>(blockedClients_.size()).swap(blockedClients_);
   dbno_ = 0;

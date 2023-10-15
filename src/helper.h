@@ -125,7 +125,7 @@ inline size_t ScanHashMember(const HASH& container, size_t cursor, size_t count,
 }
 
 template <typename HASH>
-inline size_t ScanConcurrentHashMember(const HASH* container, size_t cursor, size_t count,
+inline size_t ScanConcurrentHashMember(const std::unique_ptr<HASH>& container, size_t cursor, size_t count,
                              std::vector<typename HASH::const_iterator>& res) {
     if (cursor >= container->size()) {
         return 0;
