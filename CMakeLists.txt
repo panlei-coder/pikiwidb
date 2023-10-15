@@ -107,7 +107,7 @@ include(cmake/fmt.cmake)
 include(cmake/tbb.cmake)
 
 
-ADD_SUBDIRECTORY(src/std)
+ADD_SUBDIRECTORY(src/pstd)
 ADD_SUBDIRECTORY(src/net)
 ADD_SUBDIRECTORY(src)
 
