@@ -13,11 +13,12 @@
 #include "list.h"
 #include "set.h"
 #include "sorted_set.h"
+#include "tbb/concurrent_hash_map.h"
 
 #include <map>
 #include <memory>
 #include <vector>
-#include <tbb/concurrent_hash_map.h>
+#include <scoped_allocator>
 
 namespace pikiwidb {
 
@@ -81,6 +82,8 @@ struct PObject {
 class PClient;
 
 // using PDB = std::unordered_map<PString, PObject, my_hash, std::equal_to<PString> >;
+// using PDB = tbb::concurrent_hash_map<PString, PObject, my_hash_compare, PDBAllocator<PString, PObject> >;
+using allocator_type = std::scoped_allocator_adaptor<tbb::tbb_allocator<std::pair<PString, PObject> > >;
 using PDB = tbb::concurrent_hash_map<PString, PObject, my_hash_compare>;
 
 const int kMaxDBNum = 65536;
@@ -102,14 +105,14 @@ class PStore {
   bool ExistsKey(const PString& key) const;
   PType KeyType(const PString& key) const;
   PString RandomKey(PObject** val = nullptr) const;
-  size_t DBSize() const { return dbs_[dbno_].size(); }
+  size_t DBSize() const { return dbs_[dbno_]->size(); }
   size_t ScanKey(size_t cursor, size_t count, std::vector<PString>& res) const;
 
   // iterator
-  PDB::const_iterator begin() const { return dbs_[dbno_].begin(); }
-  PDB::const_iterator end() const { return dbs_[dbno_].end(); }
-  PDB::iterator begin() { return dbs_[dbno_].begin(); }
-  PDB::iterator end() { return dbs_[dbno_].end(); }
+  PDB::const_iterator begin() const { return dbs_[dbno_]->begin(); }
+  PDB::const_iterator end() const { return dbs_[dbno_]->end(); }
+  PDB::iterator begin() { return dbs_[dbno_]->begin(); }
+  PDB::iterator end() { return dbs_[dbno_]->end(); }
 
   const PObject* GetObject(const PString& key) const;
   PError GetValue(const PString& key, PObject*& value, bool touch = true);
@@ -133,7 +136,7 @@ class PStore {
   void InitExpireTimer();
 
   // danger cmd
-  void ClearCurrentDB() { dbs_[dbno_].clear(); }
+  void ClearCurrentDB() { dbs_[dbno_]->clear(); }
   void ResetDB();
 
   // for blocked list
@@ -199,7 +202,8 @@ class PStore {
   PError setValue(const PString& key, PObject& value, bool exclusive = false);
 
   // Because GetObject() must be const, so mutable them
-  mutable std::vector<PDB> dbs_;
+  // mutable std::vector<PDB> dbs_;
+  mutable std::vector<std::unique_ptr<PDB> > dbs_; 
   mutable std::vector<ExpiredDB> expiredDBs_;
   std::vector<BlockedClients> blockedClients_;
   std::vector<std::unique_ptr<PDumpInterface> > backends_;

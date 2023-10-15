@@ -1,0 +1,23 @@
+[2023-10-15 17:48:10.402 #89364 pikiwidb.cc:266 info] pikiwidb server start...
+[2023-10-15 17:48:10.402 #89364 tcp_listener.cc:53 info] tcp listen on port 127.0.0.1:9221
+[2023-10-15 17:48:10.402 #89364 io_thread_pool.cc:113 info] Process starting...
+[2023-10-15 17:48:10.402 #89364 io_thread_pool.cc:183 info] loop 0x5560f58853b0, name pikiwi-main_1
+[2023-10-15 17:48:10.402 #89364 io_thread_pool.cc:183 info] loop 0x5560f58876d0, name pikiwi-main_2
+[2023-10-15 17:48:10.403 #89364 io_thread_pool.cc:208 info] loop 0x5560f5887a60, name pikiwi-main-slave_1
+[2023-10-15 17:48:10.403 #89364 io_thread_pool.cc:208 info] loop 0x5560f5887b80, name pikiwi-main-slave_2
+[2023-10-15 17:48:22.557 #89364 tcp_listener.cc:87 info] new conn fd 30 from 127.0.0.1:42012
+[2023-10-15 17:48:22.557 #89365 tcp_connection.cc:179 info] HandleConnect success with 127.0.0.1:42012
+[2023-10-15 17:48:22.557 #89365 pikiwidb.cc:160 info] New connection from 127.0.0.1:42012
+[2023-10-15 17:48:22.557 #89365 client.cc:185 debug] client 7, cmd command
+[2023-10-15 17:48:25.270 #89365 client.cc:185 debug] client 7, cmd get
+[2023-10-15 17:48:29.430 #89365 client.cc:185 debug] client 7, cmd set
+[2023-10-15 17:48:31.246 #89365 client.cc:185 debug] client 7, cmd get
+[2023-10-15 17:48:33.518 #89365 client.cc:185 debug] client 7, cmd set
+[2023-10-15 17:48:37.262 #89365 client.cc:185 debug] client 7, cmd set
+[2023-10-15 17:48:38.605 #89365 client.cc:185 debug] client 7, cmd get
+[2023-10-15 17:48:42.118 #89365 tcp_connection.cc:312 info] TcpConnection::OnEvent 11, state 2, obj 0x7f3028001510
+[2023-10-15 17:48:42.118 #89365 pikiwidb.cc:170 info] disconnect from 127.0.0.1
+[2023-10-15 17:48:42.118 #89365 tcp_connection.cc:33 info] close tcp fd 30
+[2023-10-15 17:48:52.416 #89364 tcp_listener.cc:24 info] close tcp listener fd 9
+[2023-10-15 17:48:52.417 #89364 io_thread_pool.cc:133 info] Process stopped, goodbye...
+[2023-10-15 17:48:52.417 #89364 pikiwidb.cc:245 info] server exit running

@@ -7,5 +7,7 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/src/net)
 ADD_EXECUTABLE(pikiwidb ${PIKIWIDB_SRC})
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
-TARGET_LINK_LIBRARIES(pikiwidb libnet; dl; leveldb; fmt)
+TARGET_LINK_LIBRARIES(pikiwidb libnet; dl; leveldb; fmt; tbb)
+#find_package(TBB REQUIRED)
+#TARGET_LINK_LIBRARIES(pikiwidb TBB::tbb; libnet; dl; leveldb; fmt)
 SET_TARGET_PROPERTIES(pikiwidb PROPERTIES LINKER_LANGUAGE CXX)

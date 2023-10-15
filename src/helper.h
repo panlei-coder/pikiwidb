@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <vector>
 #include "pstring.h"
+#include "tbb/concurrent_hash_map.h"
+#include "tbb/scalable_allocator.h"
 
 namespace pikiwidb {
 
@@ -26,6 +28,25 @@ struct my_hash_compare {
     size_t hash (const PString& str) const;
     bool equal (const PString& key_first,const PString& key_second) const;
 };
+
+// // Custom allocation functions
+// template<typename Key, typename T, typename HashCompare = my_hash_compare, 
+//   typename Allocator = tbb::tbb_allocator<std::pair<const Key,T> > >
+// struct PDBAllocator {
+//     using value_type = std::pair<const Key, T>;
+
+//     PDBAllocator() = default;
+
+//     PDBAllocator(const PDBAllocator&) {}
+
+//     value_type* allocate(std::size_t n) {
+//         return static_cast<value_type*>(Allocator().allocate(n));
+//     }
+
+//     void deallocate(value_type* p, std::size_t n) {
+//         Allocator().deallocate(p, n);
+//     }
+// };
 
 std::size_t BitCount(const uint8_t* buf, std::size_t len);
 
@@ -104,21 +125,21 @@ inline size_t ScanHashMember(const HASH& container, size_t cursor, size_t count,
 }
 
 template <typename HASH>
-inline size_t ScanConcurrentHashMember(const HASH& container, size_t cursor, size_t count,
+inline size_t ScanConcurrentHashMember(const HASH* container, size_t cursor, size_t count,
                              std::vector<typename HASH::const_iterator>& res) {
-    if (cursor >= container.size()) {
+    if (cursor >= container->size()) {
         return 0;
     }
 
     auto idx = cursor;
-    for (typename HASH::const_iterator it = container.begin(); it != container.end(); ++it) {
+    for (typename HASH::const_iterator it = container->begin(); it != container->end(); ++it) {
         if (idx == 0) {
             size_t newCursor = cursor;
-            while (res.size() < count && it != container.end()) {
+            while (res.size() < count && it != container->end()) {
                 ++newCursor;
                 res.push_back(it++);
 
-                if (it == container.end()) {
+                if (it == container->end()) {
                     return newCursor;
                 }
             }
