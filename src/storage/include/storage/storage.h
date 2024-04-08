@@ -7,7 +7,10 @@
 #define INCLUDE_STORAGE_STORAGE_H_
 
 #include <unistd.h>
-#include <list>
+#include <cstdint>
+#include <functional>
+#include <future>
+#include <limits>
 #include <map>
 #include <queue>
 #include <string>
@@ -26,7 +29,9 @@
 #include "pstd/pstd_mutex.h"
 #include "storage/slot_indexer.h"
 
-#include "braft/raft.h"
+namespace pikiwidb {
+class Binlog;
+}
 
 namespace storage {
 
@@ -54,6 +59,8 @@ enum class OptionType;
 template <typename T1, typename T2>
 class LRUCache;
 
+using AppendLogFunction = std::function<void(const pikiwidb::Binlog&, std::promise<Status>&&)>;
+
 struct StorageOptions {
   rocksdb::Options options;
   rocksdb::BlockBasedTableOptions table_options;
@@ -64,6 +71,8 @@ struct StorageOptions {
   size_t small_compaction_duration_threshold = 10000;
   size_t db_instance_num = 3;  // default = 3
   int db_id;
+  AppendLogFunction append_log_function;
+  uint32_t raft_timeout_s = std::numeric_limits<uint32_t>::max();
   Status ResetOptions(const OptionType& option_type, const std::unordered_map<std::string, std::string>& options_map);
 };
 
@@ -1086,6 +1095,7 @@ class Storage {
 
   Status SetOptions(const OptionType& option_type, const std::unordered_map<std::string, std::string>& options);
   void GetRocksDBInfo(std::string& info);
+  Status OnBinlogWrite(const pikiwidb::Binlog& log);
 
  private:
   std::vector<std::unique_ptr<Redis>> insts_;
