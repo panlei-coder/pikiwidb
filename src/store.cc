@@ -5,12 +5,15 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
+#include "store.h"
+
+#include <memory>
 #include <string>
+
+#include "pstd/log.h"
 
 #include "checkpoint_manager.h"
 #include "config.h"
-#include "log.h"
-#include "store.h"
 
 namespace pikiwidb {
 
@@ -35,6 +38,8 @@ void PStore::Init() {
     ERROR("unsupport backend!");
   }
 }
+
+void PStore::Clear() { backends_.clear(); }
 
 void PStore::DoSomeThingSpecificDB(const TasksVector& tasks) {
   std::for_each(tasks.begin(), tasks.end(), [this](const auto& task) {

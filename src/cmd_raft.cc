@@ -5,17 +5,19 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
+#include "cmd_raft.h"
+
 #include <cstdint>
 #include <optional>
 #include <string>
 
+#include "net/event_loop.h"
+#include "praft/praft.h"
+#include "pstd/log.h"
+#include "pstd/pstd_string.h"
+
 #include "client.h"
-#include "cmd_raft.h"
-#include "event_loop.h"
-#include "log.h"
 #include "pikiwidb.h"
-#include "praft.h"
-#include "pstd_string.h"
 
 namespace pikiwidb {
 
@@ -36,8 +38,10 @@ void RaftNodeCmd::DoCmd(PClient* client) {
     DoCmdAdd(client);
   } else if (!strcasecmp(cmd.c_str(), "REMOVE")) {
     DoCmdRemove(client);
+  } else if (!strcasecmp(cmd.c_str(), "DOSNAPSHOT")) {
+    DoCmdSnapshot(client);
   } else {
-    client->SetRes(CmdRes::kErrOther, "RAFT.NODE supports ADD / REMOVE only");
+    client->SetRes(CmdRes::kErrOther, "RAFT.NODE supports ADD / REMOVE / DOSNAPSHOT only");
   }
 }
 
@@ -67,6 +71,13 @@ void RaftNodeCmd::DoCmdRemove(PClient* client) {
     client->SetRes(CmdRes::kOK);
   } else {
     client->SetRes(CmdRes::kErrOther, fmt::format("Failed to remove peer: {}", s.error_str()));
+  }
+}
+
+void RaftNodeCmd::DoCmdSnapshot(PClient* client) {
+  auto s = PRAFT.DoSnapshot();
+  if (s.ok()) {
+    client->SetRes(CmdRes::kOK);
   }
 }
 

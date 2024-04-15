@@ -7,10 +7,20 @@
 
 #pragma once
 
+#include <filesystem>
 #include <future>
+#include <mutex>
+#include <string>
+#include <tuple>
+#include <vector>
 
+#include "braft/file_system_adaptor.h"
 #include "braft/raft.h"
 #include "rocksdb/status.h"
+
+namespace braft {
+class FileSystemAdaptor;
+}  // namespace braft
 
 namespace pikiwidb {
 
@@ -93,7 +103,7 @@ class PRaft : public braft::StateMachine {
   butil::Status Init(std::string& group_id, bool initial_conf_is_null);
   butil::Status AddPeer(const std::string& peer);
   butil::Status RemovePeer(const std::string& peer);
-  butil::Status RaftRecvEntry();
+  butil::Status DoSnapshot(int64_t self_snapshot_index = 0, bool is_sync = true);
 
   void ShutDown();
   void Join();
@@ -119,6 +129,8 @@ class PRaft : public braft::StateMachine {
   bool IsInitialized() const { return node_ != nullptr && server_ != nullptr; }
 
  private:
+  void recursive_copy(const std::filesystem::path& source, const std::filesystem::path& destination);
+
   void on_apply(braft::Iterator& iter) override;
   void on_snapshot_save(braft::SnapshotWriter* writer, braft::Closure* done) override;
   int on_snapshot_load(braft::SnapshotReader* reader) override;
@@ -132,7 +144,6 @@ class PRaft : public braft::StateMachine {
   void on_stop_following(const ::braft::LeaderChangeContext& ctx) override;
   void on_start_following(const ::braft::LeaderChangeContext& ctx) override;
 
- private:
   std::unique_ptr<brpc::Server> server_{nullptr};  // brpc
   std::unique_ptr<braft::Node> node_{nullptr};
   braft::NodeOptions node_options_;  // options for raft node
@@ -140,6 +151,8 @@ class PRaft : public braft::StateMachine {
 
   JoinCmdContext join_ctx_;  // context for cluster join command
   std::string dbid_;         // dbid of group,
+
+  scoped_refptr<braft::FileSystemAdaptor> snapshot_adaptor_ = nullptr;
 };
 
 }  // namespace pikiwidb

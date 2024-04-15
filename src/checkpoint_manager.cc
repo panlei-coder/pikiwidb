@@ -21,14 +21,6 @@ void CheckpointManager::Init(int instNum, DB* db) {
 void CheckpointManager::CreateCheckpoint(const std::string& path) {
   res_.clear();
 
-  if (!pstd::FileExists(path)) {
-    if (0 != pstd::CreatePath(path)) {
-      WARN("Create Dir {} fail!", path);
-      return;
-    }
-    INFO("Create Dir {} success!", path);
-  }
-
   std::lock_guard Lock(shared_mutex_);
   for (int i = 0; i < checkpoint_num_; ++i) {
     auto res = std::async(std::launch::async, &DB::DoBgSave, db_, path, i);

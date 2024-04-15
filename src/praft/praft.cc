@@ -23,6 +23,7 @@
 #include "config.h"
 #include "pikiwidb.h"
 #include "praft_service.h"
+#include "psnapshot.h"
 #include "store.h"
 
 #define ERROR_LOG_AND_STATUS(msg) \
@@ -101,12 +102,15 @@ butil::Status PRaft::Init(std::string& group_id, bool initial_conf_is_null) {
   // node_options_.election_timeout_ms = FLAGS_election_timeout_ms;
   node_options_.fsm = this;
   node_options_.node_owns_fsm = false;
-  // node_options_.snapshot_interval_s = FLAGS_snapshot_interval;
+  node_options_.snapshot_interval_s = 0;
   std::string prefix = "local://" + g_config.dbpath + "_praft";
   node_options_.log_uri = prefix + "/log";
   node_options_.raft_meta_uri = prefix + "/raft_meta";
   node_options_.snapshot_uri = prefix + "/snapshot";
   // node_options_.disable_cli = FLAGS_disable_cli;
+  snapshot_adaptor_ = new PPosixFileSystemAdaptor();
+  node_options_.snapshot_file_system_adaptor = &snapshot_adaptor_;
+
   node_ = std::make_unique<braft::Node>("pikiwidb", braft::PeerId(addr));  // group_id
   if (node_->init(node_options_) != 0) {
     node_.reset();
@@ -312,6 +316,19 @@ butil::Status PRaft::RemovePeer(const std::string& peer) {
   return {0, "OK"};
 }
 
+butil::Status PRaft::DoSnapshot(int64_t self_snapshot_index, bool is_sync) {
+  if (!node_) {
+    return ERROR_LOG_AND_STATUS("Node is not initialized");
+  }
+  braft::SynchronizedClosure done;
+  node_->snapshot(&done);  // @todo self_snapshot_index
+  if (is_sync) {
+    done.wait();
+  }
+
+  return {0, "OK"};
+}
+
 void PRaft::OnJoinCmdConnectionFailed([[maybe_unused]] EventLoop* loop, const char* peer_ip, int port) {
   auto cli = join_ctx_.GetClient();
   if (cli) {
@@ -361,6 +378,30 @@ void PRaft::AppendLog(const Binlog& log, std::promise<rocksdb::Status>&& promise
   node_->apply(task);
 }
 
+void PRaft::recursive_copy(const std::filesystem::path& source, const std::filesystem::path& destination) {
+  if (std::filesystem::is_regular_file(source)) {
+    if (source.filename() == PBRAFT_SNAPSHOT_META_FILE) {
+      return;
+    } else if (source.extension() == ".sst") {
+      // Create a hard link
+      INFO("hard link success! source_file = {} , destination_file = {}", source.string(), destination.string());
+      ::link(source.c_str(), destination.c_str());
+    } else {
+      // Copy the file
+      INFO("copy success! source_file = {} , destination_file = {}", source.string(), destination.string());
+      std::filesystem::copy_file(source, destination, std::filesystem::copy_options::overwrite_existing);
+    }
+  } else {
+    if (!pstd::FileExists(destination)) {
+      pstd::CreateDir(destination);
+    }
+
+    for (const auto& entry : std::filesystem::directory_iterator(source)) {
+      recursive_copy(entry.path(), destination / entry.path().filename());
+    }
+  }
+}
+
 void PRaft::on_apply(braft::Iterator& iter) {
   // A batch of tasks are committed, which must be processed through
   for (; iter.valid(); iter.next()) {
@@ -391,9 +432,24 @@ void PRaft::on_apply(braft::Iterator& iter) {
   }
 }
 
-void PRaft::on_snapshot_save(braft::SnapshotWriter* writer, braft::Closure* done) {}
+void PRaft::on_snapshot_save(braft::SnapshotWriter* writer, braft::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+}
 
-int PRaft::on_snapshot_load(braft::SnapshotReader* reader) { return 0; }
+int PRaft::on_snapshot_load(braft::SnapshotReader* reader) {
+  CHECK(!IsLeader()) << "Leader is not supposed to load snapshot";
+  auto reader_path = reader->get_path();  // xx/snapshot_0000001
+  auto db_path = g_config.dbpath;
+  PSTORE.Clear();
+  for (int i = 0; i < g_config.databases; i++) {
+    auto sub_path = db_path + std::to_string(i);
+    pstd::DeleteDirIfExist(sub_path);
+  }
+  db_path.pop_back();
+  recursive_copy(reader_path, db_path);
+  PSTORE.Init();
+  return 0;
+}
 
 void PRaft::on_leader_start(int64_t term) {
   WARN("Node {} start to be leader, term={}", node_->node_id().to_string(), term);

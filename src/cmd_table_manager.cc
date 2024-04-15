@@ -5,6 +5,8 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
+#include "cmd_table_manager.h"
+
 #include <memory>
 
 #include "cmd_admin.h"
@@ -12,9 +14,8 @@
 #include "cmd_keys.h"
 #include "cmd_kv.h"
 #include "cmd_list.h"
-#include "cmd_set.h"
 #include "cmd_raft.h"
-#include "cmd_table_manager.h"
+#include "cmd_set.h"
 #include "cmd_zset.h"
 
 namespace pikiwidb {
@@ -46,7 +47,7 @@ void CmdTableManager::InitCmdTable() {
 
   // info
   ADD_COMMAND(Info, -1);
-  
+
   // raft
   ADD_COMMAND(RaftCluster, -1);
   ADD_COMMAND(RaftNode, -2);

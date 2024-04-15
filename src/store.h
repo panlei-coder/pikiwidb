@@ -10,7 +10,6 @@
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 
 #include <map>
-#include <memory>
 #include <shared_mutex>
 #include <vector>
 
@@ -49,9 +48,13 @@ class PStore {
 
   std::unique_ptr<DB>& GetBackend(int32_t index) { return backends_[index]; };
 
+  void Clear();
+
   void DoSomeThingSpecificDB(const TasksVector& task);
 
   void WaitForCheckpointDone();
+
+  int GetDBNumber() const { return dbNum_; }
 
   std::shared_mutex& SharedMutex() { return dbs_mutex_; }
 

@@ -7,11 +7,10 @@
 
 #include "db.h"
 
-#include "praft/praft.h"
-#include "pstd/log.h"
-
 #include "checkpoint_manager.h"
 #include "config.h"
+#include "praft/praft.h"
+#include "pstd/log.h"
 
 extern pikiwidb::PConfig g_config;
 
@@ -54,7 +53,13 @@ void DB::DoBgSave(const std::string& path, int i) {
   auto status = storage_->CreateCheckpoint(path, i);
 }
 
-void DB::CreateCheckpoint(const std::string& path) { checkpoint_manager_->CreateCheckpoint(path); }
+void DB::CreateCheckpoint(const std::string& path) {
+  if (0 != pstd::CreatePath(path + '/' + std::to_string(db_index_))) {
+    WARN("Create dir {} fail !", path + '/' + std::to_string(db_index_));
+    return;
+  }
+  checkpoint_manager_->CreateCheckpoint(path);
+}
 
 void DB::WaitForCheckpointDone() { checkpoint_manager_->WaitForCheckpointDone(); }
 
