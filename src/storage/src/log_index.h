@@ -23,7 +23,7 @@
 
 namespace storage {
 
-using LogIndex = int64_t;
+using LogIndex = uint64_t;
 using rocksdb::SequenceNumber;
 class Redis;
 
@@ -56,9 +56,11 @@ class LogIndexOfColumnFamilies {
   LogIndex GetSmallestAppliedLogIndex() const {
     return GetSmallestLogIndex([](const LogIndexPair &p) { return p.applied_log_index.load(); });
   }
-  // LogIndex GetSmallestFlushedLogIndex() const {
-  //   return GetSmallestLogIndex([](const LogIndexPair &p) { return p.flushed_log_index.load(); });
-  // }
+
+  LogIndex GetSmallestFlushedLogIndex() const {
+    return GetSmallestLogIndex([](const LogIndexPair &p) { return p.flushed_log_index.load(); });
+  }
+
   void SetFlushedLogIndex(size_t cf_id, LogIndex log_index) {
     cf_[cf_id].flushed_log_index = std::max(cf_[cf_id].flushed_log_index.load(), log_index);
   }

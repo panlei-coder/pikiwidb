@@ -153,6 +153,8 @@ class PRaft : public braft::StateMachine {
   std::string dbid_;         // dbid of group,
 
   scoped_refptr<braft::FileSystemAdaptor> snapshot_adaptor_ = nullptr;
+
+  bool is_node_first_start_up_ = true;
 };
 
 }  // namespace pikiwidb

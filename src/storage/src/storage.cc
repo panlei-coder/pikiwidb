@@ -2296,4 +2296,13 @@ Status Storage::OnBinlogWrite(const pikiwidb::Binlog& log, LogIndex log_idx) {
   return s;
 }
 
+LogIndex Storage::GetSmallestFlushedLogIndex() const {
+  LogIndex smallest_flushed_log_index = UINT64_MAX; 
+  for (auto inst : insts_) {
+    smallest_flushed_log_index = std::min(smallest_flushed_log_index, inst->GetSmallestFlushedLogIndex());
+  }
+
+  return smallest_flushed_log_index;
+}
+
 }  //  namespace storage

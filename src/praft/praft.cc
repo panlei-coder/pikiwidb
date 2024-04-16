@@ -438,6 +438,15 @@ void PRaft::on_snapshot_save(braft::SnapshotWriter* writer, braft::Closure* done
 
 int PRaft::on_snapshot_load(braft::SnapshotReader* reader) {
   CHECK(!IsLeader()) << "Leader is not supposed to load snapshot";
+
+  if (is_node_first_start_up_) {
+    // @todo get replay point(Think about whether it's all db's or one db's)
+    uint64_t replay_point = PSTORE.GetBackend(0)->GetStorage()->GetSmallestFlushedLogIndex();
+    node->set_self_playback_point(replay_point);
+    is_node_first_start_up_ = false;
+    return 0;
+  }
+
   auto reader_path = reader->get_path();  // xx/snapshot_0000001
   auto db_path = g_config.dbpath;
   PSTORE.Clear();
