@@ -53,7 +53,7 @@ using BlockBasedTableOptions = rocksdb::BlockBasedTableOptions;
 using Status = rocksdb::Status;
 using Slice = rocksdb::Slice;
 using Env = rocksdb::Env;
-using LogIndex = uint64_t;
+using LogIndex = int64_t;
 
 class Redis;
 enum class OptionType;

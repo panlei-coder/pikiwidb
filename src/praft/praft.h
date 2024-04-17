@@ -125,6 +125,7 @@ class PRaft : public braft::StateMachine {
   std::string GetGroupId() const;
   braft::NodeStatus GetNodeStatus() const;
   butil::Status GetListPeers(std::vector<braft::PeerId>* peers);
+  uint64_t GetTerm(uint64_t log_index);
 
   bool IsInitialized() const { return node_ != nullptr && server_ != nullptr; }
 

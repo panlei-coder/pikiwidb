@@ -23,7 +23,7 @@
 
 namespace storage {
 
-using LogIndex = uint64_t;
+using LogIndex = int64_t;
 using rocksdb::SequenceNumber;
 class Redis;
 

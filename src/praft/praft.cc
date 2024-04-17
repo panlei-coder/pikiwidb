@@ -181,6 +181,15 @@ butil::Status PRaft::GetListPeers(std::vector<braft::PeerId>* peers) {
   return node_->list_peers(peers);
 }
 
+uint64_t PRaft::GetTerm(uint64_t log_index) {
+  if (!node_) {
+    ERROR("Node is not initialized");
+    return 0;
+  } else {
+    return node_->get_term(log_index);
+  }
+}
+
 // Gets the cluster id, which is used to initialize node
 void PRaft::SendNodeInfoRequest(PClient* client) {
   assert(client);
@@ -440,9 +449,10 @@ int PRaft::on_snapshot_load(braft::SnapshotReader* reader) {
   CHECK(!IsLeader()) << "Leader is not supposed to load snapshot";
 
   if (is_node_first_start_up_) {
-    // @todo get replay point(Think about whether it's all db's or one db's)
+    // @todo get replay point(Think about whether it's all db's or one db's or other)
     uint64_t replay_point = PSTORE.GetBackend(0)->GetStorage()->GetSmallestFlushedLogIndex();
-    node->set_self_playback_point(replay_point);
+    node_->set_self_playback_point(replay_point);
+    INFO("set replay_point: {}", replay_point);
     is_node_first_start_up_ = false;
     return 0;
   }
