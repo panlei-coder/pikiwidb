@@ -3,24 +3,37 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-SET(OPENSSL_FETCH_INFO
-        URL https://www.openssl.org/source/openssl-1.1.1h.tar.gz
-        URL_HASH SHA256=5c9ca8774bd7b03e5784f26ae9e9e6d749c9da2438545077e6b3d755a06595d9
-        )
-SET(OPENSSL_USE_STATIC_LIBS ON)
+INCLUDE(ExternalProject)
 
-FETCHCONTENT_DECLARE(
-        openssl
-        GIT_REPOSITORY https://github.com/jc-lab/openssl-cmake.git
-        GIT_TAG        39af37e0964d71c516da5b1836849dd0a03df7a4 # Change to the latest commit ID
+SET(OPENSSL_SOURCE_DIR ${THIRD_PARTY_PATH}/openssl)
+SET(OPENSSL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openssl)
+SET(OPENSSL_INCLUDE_DIR ${OPENSSL_INSTALL_DIR}/include)
+SET(OPENSSL_CONFIGURE_COMMAND ${OPENSSL_SOURCE_DIR}/config)
+
+FILE(MAKE_DIRECTORY ${OPENSSL_INCLUDE_DIR})
+
+ExternalProject_Add(
+        OpenSSL
+        SOURCE_DIR ${OPENSSL_SOURCE_DIR}
+        GIT_REPOSITORY https://github.com/openssl/openssl.git
+        GIT_TAG OpenSSL_1_1_1n
+        USES_TERMINAL_DOWNLOAD TRUE
+        CONFIGURE_COMMAND
+        ${OPENSSL_CONFIGURE_COMMAND}
+        --prefix=${OPENSSL_INSTALL_DIR}
+        --openssldir=${OPENSSL_INSTALL_DIR}
+        BUILD_COMMAND make
+        TEST_COMMAND ""
+        INSTALL_COMMAND make install
+        INSTALL_DIR ${OPENSSL_INSTALL_DIR}
 )
 
-FETCHCONTENT_GETPROPERTIES(openssl)
-IF (NOT openssl_POPULATED)
-        FETCHCONTENT_POPULATE(openssl)
-        ADD_SUBDIRECTORY(${openssl_SOURCE_DIR} ${openssl_BINARY_DIR})
-ENDIF ()
+ADD_LIBRARY(ssl STATIC IMPORTED GLOBAL)
+SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_INSTALL_DIR}/lib/libssl.so)
+SET_PROPERTY(TARGET ssl PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${OPENSSL_INCLUDE_DIR})
+ADD_DEPENDENCIES(ssl OpenSSL)
 
-SET(OPENSSL_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/_deps/openssl_src-src/include)
-SET(OPENSSL_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/_deps/openssl_src-src)
-SET(OPENSSL_CRYPTO_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/_deps/openssl_src-src)
+ADD_LIBRARY(crypto STATIC IMPORTED GLOBAL)
+SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_INSTALL_DIR}/lib/libcrypto.so)
+SET_PROPERTY(TARGET crypto PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${OPENSSL_INCLUDE_DIR})
+ADD_DEPENDENCIES(crypto OpenSSL)
