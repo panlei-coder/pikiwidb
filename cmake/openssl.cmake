@@ -23,8 +23,8 @@ FILE(MAKE_DIRECTORY ${OPENSSL_INCLUDE_DIR})
 ExternalProject_Add(
         OpenSSL
         SOURCE_DIR ${OPENSSL_SOURCE_DIR}
-        GIT_REPOSITORY https://github.com/openssl/openssl.git
-        GIT_TAG openssl-3.2.1
+        URL https://github.com/openssl/openssl/archive/refs/tags/openssl-3.2.1.tar.gz
+        URL_HASH SHA256=75cc6803ffac92625c06ea3c677fb32ef20d15a1b41ecc8dddbc6b9d6a2da84c
         USES_TERMINAL_DOWNLOAD TRUE
         CONFIGURE_COMMAND
         ${OPENSSL_CONFIGURE_COMMAND}
