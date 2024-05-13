@@ -70,6 +70,12 @@ echo "BUILD_TYPE:" $BUILD_TYPE
 echo "CMAKE_FLAGS:" $CMAKE_FLAGS
 echo "MAKE_FLAGS:" $MAKE_FLAGS
 
+if [ "${BUILD_TYPE}" == "Release" ]; then
+  PREFIX="${PREFIX}-release"
+else
+  PREFIX="${PREFIX}-debug"
+fi
+
 cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ${CMAKE_FLAGS} -S . -B ${PREFIX}
 cmake --build ${PREFIX} -- ${MAKE_FLAGS} -j ${CPU_CORE}
 
