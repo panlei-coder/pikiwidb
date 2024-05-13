@@ -62,7 +62,8 @@ src/build_version.cc
 
 
 #build
-build/
+build-release/
+build-debug/
 buildtrees
 deps
 
