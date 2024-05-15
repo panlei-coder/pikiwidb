@@ -2409,7 +2409,7 @@ Status Storage::OnBinlogWrite(const pikiwidb::Binlog& log, LogIndex log_idx) {
 }
 
 LogIndex Storage::GetSmallestFlushedLogIndex() const {
-  LogIndex smallest_flushed_log_index = INT64_MAX; 
+  LogIndex smallest_flushed_log_index = INT64_MAX;
   for (auto& inst : insts_) {
     smallest_flushed_log_index = std::min(smallest_flushed_log_index, inst->GetSmallestFlushedLogIndex());
   }

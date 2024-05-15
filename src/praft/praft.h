@@ -166,7 +166,7 @@ class PRaft : public braft::StateMachine {
   ClusterCmdContext cluster_cmd_ctx_;  // context for cluster join/remove command
   std::string group_id_;               // group id
   int db_id_ = 0;                      // db_id
-  
+
   bool is_node_first_start_up_ = true;
 };
 

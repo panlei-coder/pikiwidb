@@ -540,7 +540,7 @@ butil::Status PRaft::DoSnapshot(int64_t self_snapshot_index, bool is_sync) {
   if (!node_) {
     return ERROR_LOG_AND_STATUS("Node is not initialized");
   }
-   
+
   if (is_sync) {
     braft::SynchronizedClosure done;
     node_->snapshot(&done, self_snapshot_index);
@@ -659,10 +659,10 @@ int PRaft::on_snapshot_load(braft::SnapshotReader* reader) {
   if (is_node_first_start_up_) {
     // get replay point of one db's
     /*
-    1. When a node starts normally, because all memory data is flushed to disks and 
-       snapshots are truncated to the latest, the flush-index and apply-index are the 
+    1. When a node starts normally, because all memory data is flushed to disks and
+       snapshots are truncated to the latest, the flush-index and apply-index are the
        same when the node starts, so the maximum log index should be obtained.
-    2. When a node is improperly shut down and restarted, the minimum flush-index should 
+    2. When a node is improperly shut down and restarted, the minimum flush-index should
        be obtained as the starting point for fault recovery.
     */
     // @todo GetSmallestFlushedLogIndex
@@ -672,13 +672,13 @@ int PRaft::on_snapshot_load(braft::SnapshotReader* reader) {
     INFO("set replay_point: {}", replay_point);
 
     /*
-    If a node has just joined the cluster and does not have any data, 
-    it does not load the local snapshot at startup. Therefore, 
+    If a node has just joined the cluster and does not have any data,
+    it does not load the local snapshot at startup. Therefore,
     LoadDBFromCheckPoint is required after loading the snapshot from the leader.
     */
     if (GetLastLogIndex() != 0) {
       return 0;
-    }    
+    }
   }
 
   // 3. When a snapshot is installed on a node, you do not need to set a playback point.

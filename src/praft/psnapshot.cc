@@ -37,7 +37,7 @@ braft::FileAdaptor* PPosixFileSystemAdaptor::open(const std::string& path, int o
     parse_snapshot_path.GetComponents(&components);
     for (const auto& component : components) {
       snapshot_path += component + "/";
-      
+
       if (is_find_db && pstd::String2int(component, &db_id)) {
         is_find_db = false;
       }
@@ -48,7 +48,7 @@ braft::FileAdaptor* PPosixFileSystemAdaptor::open(const std::string& path, int o
         is_find_db = true;
       }
     }
-    
+
     // check whether snapshots have been created
     std::lock_guard<braft::raft_mutex_t> guard(mutex_);
     if (!snapshot_path.empty()) {
@@ -81,7 +81,7 @@ braft::FileAdaptor* PPosixFileSystemAdaptor::open(const std::string& path, int o
 
       // update snapshot last log index and last_log_term
       auto& new_meta = const_cast<braft::SnapshotMeta&>(snapshot_meta_memtable.meta());
-      auto last_log_index = 30000; // @todo PSTORE.GetBackend(db_id)->GetStorage()->GetSmallestFlushedLogIndex();
+      auto last_log_index = 30000;  // @todo PSTORE.GetBackend(db_id)->GetStorage()->GetSmallestFlushedLogIndex();
       new_meta.set_last_included_index(last_log_index);
       auto last_log_term = PRAFT.GetTerm(last_log_index);
       new_meta.set_last_included_term(last_log_term);

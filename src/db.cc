@@ -35,7 +35,8 @@ rocksdb::Status DB::Open() {
       r.AppendLog(log, std::move(promise));
     };
     storage_options.do_snapshot_function = [raft = &pikiwidb::PRAFT](auto&& self_snapshot_index, auto&& is_sync) {
-      raft->DoSnapshot(std::forward<decltype(self_snapshot_index)>(self_snapshot_index), std::forward<decltype(is_sync)>(is_sync));
+      raft->DoSnapshot(std::forward<decltype(self_snapshot_index)>(self_snapshot_index),
+                       std::forward<decltype(is_sync)>(is_sync));
     };
   }
 
