@@ -16,8 +16,8 @@ ExternalProject_Add(
         extern_braft
         ${EXTERNAL_PROJECT_LOG_ARGS}
         DEPENDS brpc
-        GIT_REPOSITORY "https://github.com/pikiwidb/braft.git"
-        GIT_TAG master
+        GIT_REPOSITORY https://github.com/panlei-coder/braft.git
+        GIT_TAG merge-master-playback
         PREFIX ${BRAFT_SOURCES_DIR}
         UPDATE_COMMAND ""
         CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

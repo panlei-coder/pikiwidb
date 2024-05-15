@@ -137,6 +137,8 @@ class PRaft : public braft::StateMachine {
   std::string GetGroupID() const;
   braft::NodeStatus GetNodeStatus() const;
   butil::Status GetListPeers(std::vector<braft::PeerId>* peers);
+  uint64_t GetTerm(uint64_t log_index);
+  uint64_t GetLastLogIndex(bool is_flush = false);
 
   bool IsInitialized() const { return node_ != nullptr && server_ != nullptr; }
 
@@ -164,6 +166,8 @@ class PRaft : public braft::StateMachine {
   ClusterCmdContext cluster_cmd_ctx_;  // context for cluster join/remove command
   std::string group_id_;               // group id
   int db_id_ = 0;                      // db_id
+  
+  bool is_node_first_start_up_ = true;
 };
 
 }  // namespace pikiwidb

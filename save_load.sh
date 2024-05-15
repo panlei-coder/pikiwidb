@@ -1,4 +1,5 @@
 #!/bin/bash
+
 killall -9 pikiwidb
 mkdir leader follower1
 
@@ -10,9 +11,8 @@ redis-cli -p 7777 raft.cluster init
 
 redis-benchmark -p 7777 -c 5 -n 10000 -r 10000 -d 1024 -t hset
 redis-cli -p 7777 raft.node dosnapshot
+redis-benchmark -p 7777 -c 5 -n 10000 -r 10000 -d 1024 -t hset
 redis-cli -p 7777 raft.node dosnapshot
-
-sleep 10
-
+redis-benchmark -p 7777 -c 5 -n 10000 -r 10000 -d 1024 -t hset
 
 redis-cli -p 8888 raft.cluster join 127.0.0.1:7777
