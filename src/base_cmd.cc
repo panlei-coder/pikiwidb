@@ -6,7 +6,13 @@
  */
 
 #include "base_cmd.h"
+
+#include "fmt/core.h"
+
+#include "praft/praft.h"
+
 #include "common.h"
+#include "config.h"
 #include "log.h"
 #include "pikiwidb.h"
 
@@ -35,6 +41,18 @@ void BaseCmd::Execute(PClient* client) {
   auto dbIndex = client->GetCurrentDB();
   if (!HasFlag(kCmdFlagsExclusive)) {
     PSTORE.GetBackend(dbIndex)->LockShared();
+  }
+
+  // read consistency (lease read)
+  if (HasFlag(kCmdFlagsReadonly)) {
+    if (!PRAFT.IsInitialized()) {
+      return client->SetRes(CmdRes::kErrOther, "Node has not initialized");
+    }
+
+    if (!PRAFT.IsLeader()) {
+      return client->SetRes(CmdRes::kErrOther, fmt::format("The current node is not leader, redirect to leader : {}",
+                                                           PRAFT.GetLeaderAddress()));
+    }
   }
 
   if (!DoInitial(client)) {

@@ -157,6 +157,7 @@ class PRaft : public braft::StateMachine {
  private:
   std::unique_ptr<brpc::Server> server_{nullptr};  // brpc
   std::unique_ptr<braft::Node> node_{nullptr};
+  butil::atomic<int64_t> leader_term_ = -1;
   braft::NodeOptions node_options_;  // options for raft node
   std::string raw_addr_;             // ip:port of this node
 

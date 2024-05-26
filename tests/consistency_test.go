@@ -663,6 +663,10 @@ var _ = Describe("Consistency", Ordered, func() {
 		}
 	})
 
+	It("ReadConsistencyTest", func()) {
+		
+	}
+
 })
 
 func readChecker(check func(*redis.Client)) {
