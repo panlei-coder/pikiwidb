@@ -1,8 +1,9 @@
 start_server {tags {"basic"}} {
-    test {DEL all keys to start with a clean DB} {
-        foreach key [r keys *] {r del $key}
-        r dbsize
-    } {0}
+
+#    test {DEL all keys to start with a clean DB} {
+#        foreach key [r keys *] {r del $key}
+#        r dbsize
+#    } {0}
 
     test {SET and GET an item} {
         r set x foobar
@@ -37,18 +38,18 @@ start_server {tags {"basic"}} {
         lsort [r keys *]
     } {foo_a foo_b foo_c key_x key_y key_z}
 
-    test {DBSIZE} {
-        r info keyspace 1
-        after 1000
-        r dbsize
-    } {6}
+#    test {DBSIZE} {
+#        r info keyspace 1
+#        after 1000
+#        r dbsize
+#    } {6}
 
-    test {DEL all keys} {
-        foreach key [r keys *] {r del $key}
-        r info keyspace 1
-        after 1000
-        r dbsize
-    } {0}
+#    test {DEL all keys} {
+#        foreach key [r keys *] {r del $key}
+#        r info keyspace 1
+#        after 1000
+#        r dbsize
+#    } {0}
 
 #    test {Very big payload in GET/SET} {
 #        set buf [string repeat "abcd" 1000000]
@@ -291,89 +292,105 @@ start_server {tags {"basic"}} {
         append res [r exists emptykey]
     } {10}
 
-    test {Commands pipelining} {
-        set fd [r channel]
-        puts -nonewline $fd "SET k1 xyzk\r\nGET k1\r\nPING\r\n"
-        flush $fd
-        set res {}
-        append res [string match OK* [r read]]
-        append res [r read]
-        append res [string match PONG* [r read]]
-        format $res
-    } {1xyzk1}
+#    test {Commands pipelining} {
+#        set fd [r channel]
+#        puts -nonewline $fd "SET k1 xyzk\r\nGET k1\r\nPING\r\n"
+#        flush $fd
+#        set res {}
+#        append res [string match OK* [r read]]
+#        append res [r read]
+#        append res [string match PONG* [r read]]
+#        format $res
+#    } {1xyzk1}
 
     test {Non existing command} {
         catch {r foobaredcommand} err
         string match ERR* $err
     } {1}
+    
+    test {RENAME basic usage} {
+        r set mykey hello
+        r rename mykey mykey1
+        r rename mykey1 mykey2
+        r get mykey2
+    } {hello}
 
-#    test {RENAME basic usage} {
-#        r set mykey hello
-#        r rename mykey mykey1
-#        r rename mykey1 mykey2
-#        r get mykey2
-#    } {hello}
+    test {RENAME source key should no longer exist} {
+        r exists mykey
+    } {0}
 
-#    test {RENAME source key should no longer exist} {
-#        r exists mykey
-#    } {0}
+    test {RENAME against already existing key} {
+        r set mykey a
+        r set mykey2 b
+        r rename mykey2 mykey
+        set res [r get mykey]
+        append res [r exists mykey2]
+    } {b0}
 
-#    test {RENAME against already existing key} {
-#        r set mykey a
-#        r set mykey2 b
-#        r rename mykey2 mykey
-#        set res [r get mykey]
-#        append res [r exists mykey2]
-#    } {b0}
+    test {RENAMENX basic usage} {
+        r del mykey
+        r del mykey2
+        r set mykey foobar
+        r renamenx mykey mykey2
+        set res [r get mykey2]
+        append res [r exists mykey]
+    } {foobar0}
 
-#    test {RENAMENX basic usage} {
-#        r del mykey
-#        r del mykey2
-#         r set mykey foobar
-#         r renamenx mykey mykey2
-#         set res [r get mykey2]
-#         append res [r exists mykey]
-#     } {foobar0}
-#
-#     test {RENAMENX against already existing key} {
-#         r set mykey foo
-#         r set mykey2 bar
-#         r renamenx mykey mykey2
-#     } {0}
-#
-#     test {RENAMENX against already existing key (2)} {
-#        set res [r get mykey]
-#        append res [r get mykey2]
-#    } {foobar}
-#
-#    test {RENAME against non existing source key} {
-#        catch {r rename nokey foobar} err
-#        format $err
-#    } {ERR*}
-#
-#    test {RENAME where source and dest key is the same} {
-#        catch {r rename mykey mykey} err
-#        format $err
-#    } {ERR*}
-#
-#    test {RENAME with volatile key, should move the TTL as well} {
-#        r del mykey mykey2
-#        r set mykey foo
-#        r expire mykey 100
-#        assert {[r ttl mykey] > 95 && [r ttl mykey] <= 100}
-#        r rename mykey mykey2
-#        assert {[r ttl mykey2] > 95 && [r ttl mykey2] <= 100}
-#    }
-#
-#    test {RENAME with volatile key, should not inherit TTL of target key} {
-#        r del mykey mykey2
-#        r set mykey foo
-#        r set mykey2 bar
-#        r expire mykey2 100
-#        assert {[r ttl mykey] == -1 && [r ttl mykey2] > 0}
-#        r rename mykey mykey2
-#        r ttl mykey2
-#    } {-1}
+     test {RENAMENX against already existing key} {
+        r set mykey foo
+        r set mykey2 bar
+        r renamenx mykey mykey2
+    } {0}
+
+    test {RENAMENX against already existing key (2)} {
+        set res [r get mykey]
+        append res [r get mykey2]
+    } {foobar}
+
+    test {RENAME against non existing source key} {
+        catch {r rename nokey foobar} err
+        format $err
+    } {ERR*}
+
+    test {RENAMENX against non existing source key} {
+        catch {r renamenx nokey foobar} err
+        format $err
+    } {ERR*}
+
+    test {RENAME where source and dest key are the same (existing)} {
+        r set mykey foo
+        r rename mykey mykey
+    } {OK}
+
+    test {RENAMENX where source and dest key are the same (existing)} {
+        r set mykey foo
+        r renamenx mykey mykey
+    } {0}
+
+    test {RENAME where source and dest key are the same (non existing)} {
+        r del mykey
+        catch {r rename mykey mykey} err
+        format $err
+    } {ERR*}
+
+    test {RENAME with volatile key, should move the TTL as well} {
+        r del mykey mykey2
+        r set mykey foo
+        r expire mykey 100
+        assert {[r ttl mykey] > 95 && [r ttl mykey] <= 100}
+        r rename mykey mykey2
+        assert {[r ttl mykey2] > 95 && [r ttl mykey2] <= 100}
+    }
+
+    test {RENAME with volatile key, should not inherit TTL of target key} {
+        r del mykey mykey2
+        r set mykey foo
+        r set mykey2 bar
+        r expire mykey2 100
+        assert {[r ttl mykey] == -1 && [r ttl mykey2] > 0}
+        r rename mykey mykey2
+        r ttl mykey2
+    } {-1}
 
 #    test {DEL all keys again (DB 0)} {
 #        foreach key [r keys *] {

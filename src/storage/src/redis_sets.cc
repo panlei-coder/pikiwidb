@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <random>
+#include <vector>
 
 #include <fmt/core.h>
 
@@ -279,7 +280,7 @@ rocksdb::Status Redis::SDiffstore(const Slice& destination, const std::vector<st
     return rocksdb::Status::Corruption("SDiffsotre invalid parameter, no keys");
   }
 
-  rocksdb::WriteBatch batch;
+  auto batch = Batch::CreateBatch(this);
   rocksdb::ReadOptions read_options;
   const rocksdb::Snapshot* snapshot;
 
@@ -354,23 +355,23 @@ rocksdb::Status Redis::SDiffstore(const Slice& destination, const std::vector<st
       return Status::InvalidArgument("set size overflow");
     }
     parsed_sets_meta_value.SetCount(static_cast<int32_t>(members.size()));
-    batch.Put(handles_[kSetsMetaCF], base_destination.Encode(), meta_value);
+    batch->Put(kSetsMetaCF, base_destination.Encode(), meta_value);
   } else if (s.IsNotFound()) {
     char str[4];
     EncodeFixed32(str, members.size());
     SetsMetaValue sets_meta_value(Slice(str, sizeof(int32_t)));
     version = sets_meta_value.UpdateVersion();
-    batch.Put(handles_[kSetsMetaCF], base_destination.Encode(), sets_meta_value.Encode());
+    batch->Put(kSetsMetaCF, base_destination.Encode(), sets_meta_value.Encode());
   } else {
     return s;
   }
   for (const auto& member : members) {
     SetsMemberKey sets_member_key(destination, version, member);
     BaseDataValue iter_value(Slice{});
-    batch.Put(handles_[kSetsDataCF], sets_member_key.Encode(), iter_value.Encode());
+    batch->Put(kSetsDataCF, sets_member_key.Encode(), iter_value.Encode());
   }
   *ret = static_cast<int32_t>(members.size());
-  s = db_->Write(default_write_options_, &batch);
+  s = batch->Commit();
   UpdateSpecificKeyStatistics(DataType::kSets, destination.ToString(), statistic);
   value_to_dest = std::move(members);
   return s;
@@ -460,7 +461,7 @@ rocksdb::Status Redis::SInterstore(const Slice& destination, const std::vector<s
     return rocksdb::Status::Corruption("SInterstore invalid parameter, no keys");
   }
 
-  rocksdb::WriteBatch batch;
+  auto batch = Batch::CreateBatch(this);
   rocksdb::ReadOptions read_options;
   const rocksdb::Snapshot* snapshot;
 
@@ -549,23 +550,23 @@ rocksdb::Status Redis::SInterstore(const Slice& destination, const std::vector<s
       return Status::InvalidArgument("set size overflow");
     }
     parsed_sets_meta_value.SetCount(static_cast<int32_t>(members.size()));
-    batch.Put(handles_[kSetsMetaCF], base_destination.Encode(), meta_value);
+    batch->Put(kSetsMetaCF, base_destination.Encode(), meta_value);
   } else if (s.IsNotFound()) {
     char str[4];
     EncodeFixed32(str, members.size());
     SetsMetaValue sets_meta_value(Slice(str, sizeof(int32_t)));
     version = sets_meta_value.UpdateVersion();
-    batch.Put(handles_[kSetsMetaCF], base_destination.Encode(), sets_meta_value.Encode());
+    batch->Put(kSetsMetaCF, base_destination.Encode(), sets_meta_value.Encode());
   } else {
     return s;
   }
   for (const auto& member : members) {
     SetsMemberKey sets_member_key(destination, version, member);
     BaseDataValue iter_value(Slice{});
-    batch.Put(handles_[kSetsDataCF], sets_member_key.Encode(), iter_value.Encode());
+    batch->Put(kSetsDataCF, sets_member_key.Encode(), iter_value.Encode());
   }
   *ret = static_cast<int32_t>(members.size());
-  s = db_->Write(default_write_options_, &batch);
+  s = batch->Commit();
   UpdateSpecificKeyStatistics(DataType::kSets, destination.ToString(), statistic);
   value_to_dest = std::move(members);
   return s;
@@ -679,7 +680,7 @@ Status Redis::SMembersWithTTL(const Slice& key, std::vector<std::string>* member
 
 rocksdb::Status Redis::SMove(const Slice& source, const Slice& destination, const Slice& member, int32_t* ret) {
   *ret = 0;
-  rocksdb::WriteBatch batch;
+  auto batch = Batch::CreateBatch(this);
   rocksdb::ReadOptions read_options;
 
   uint64_t version = 0;
@@ -712,8 +713,8 @@ rocksdb::Status Redis::SMove(const Slice& source, const Slice& destination, cons
           return Status::InvalidArgument("set size overflow");
         }
         parsed_sets_meta_value.ModifyCount(-1);
-        batch.Put(handles_[kSetsMetaCF], base_source.Encode(), meta_value);
-        batch.Delete(handles_[kSetsDataCF], sets_member_key.Encode());
+        batch->Put(kSetsMetaCF, base_source.Encode(), meta_value);
+        batch->Delete(kSetsDataCF, sets_member_key.Encode());
         statistic++;
       } else if (s.IsNotFound()) {
         *ret = 0;
@@ -736,10 +737,10 @@ rocksdb::Status Redis::SMove(const Slice& source, const Slice& destination, cons
     if (parsed_sets_meta_value.IsStale() || parsed_sets_meta_value.Count() == 0) {
       version = parsed_sets_meta_value.InitialMetaValue();
       parsed_sets_meta_value.SetCount(1);
-      batch.Put(handles_[kSetsMetaCF], base_destination.Encode(), meta_value);
+      batch->Put(kSetsMetaCF, base_destination.Encode(), meta_value);
       SetsMemberKey sets_member_key(destination, version, member);
       BaseDataValue i_val(Slice{});
-      batch.Put(handles_[kSetsDataCF], sets_member_key.Encode(), i_val.Encode());
+      batch->Put(kSetsDataCF, sets_member_key.Encode(), i_val.Encode());
     } else {
       std::string member_value;
       version = parsed_sets_meta_value.Version();
@@ -751,8 +752,8 @@ rocksdb::Status Redis::SMove(const Slice& source, const Slice& destination, cons
         }
         parsed_sets_meta_value.ModifyCount(1);
         BaseDataValue iter_value(Slice{});
-        batch.Put(handles_[kSetsMetaCF], base_destination.Encode(), meta_value);
-        batch.Put(handles_[kSetsDataCF], sets_member_key.Encode(), iter_value.Encode());
+        batch->Put(kSetsMetaCF, base_destination.Encode(), meta_value);
+        batch->Put(kSetsDataCF, sets_member_key.Encode(), iter_value.Encode());
       } else if (!s.ok()) {
         return s;
       }
@@ -762,14 +763,14 @@ rocksdb::Status Redis::SMove(const Slice& source, const Slice& destination, cons
     EncodeFixed32(str, 1);
     SetsMetaValue sets_meta_value(Slice(str, sizeof(int32_t)));
     version = sets_meta_value.UpdateVersion();
-    batch.Put(handles_[kSetsMetaCF], base_destination.Encode(), sets_meta_value.Encode());
+    batch->Put(kSetsMetaCF, base_destination.Encode(), sets_meta_value.Encode());
     SetsMemberKey sets_member_key(destination, version, member);
     BaseDataValue iter_value(Slice{});
-    batch.Put(handles_[kSetsDataCF], sets_member_key.Encode(), iter_value.Encode());
+    batch->Put(kSetsDataCF, sets_member_key.Encode(), iter_value.Encode());
   } else {
     return s;
   }
-  s = db_->Write(default_write_options_, &batch);
+  s = batch->Commit();
   UpdateSpecificKeyStatistics(DataType::kSets, source.ToString(), 1);
   return s;
 }
@@ -778,7 +779,7 @@ rocksdb::Status Redis::SPop(const Slice& key, std::vector<std::string>* members,
   std::default_random_engine engine;
 
   std::string meta_value;
-  rocksdb::WriteBatch batch;
+  auto batch = Batch::CreateBatch(this);
   ScopeRecordLock l(lock_mgr_, key);
 
   uint64_t start_us = pstd::NowMicros();
@@ -801,14 +802,14 @@ rocksdb::Status Redis::SPop(const Slice& key, std::vector<std::string>* members,
         auto iter = db_->NewIterator(default_read_options_, handles_[kSetsDataCF]);
         for (iter->Seek(sets_member_key.EncodeSeekKey()); iter->Valid() && cur_index < size;
              iter->Next(), cur_index++) {
-          batch.Delete(handles_[kSetsDataCF], iter->key());
+          batch->Delete(kSetsDataCF, iter->key());
           ParsedSetsMemberKey parsed_sets_member_key(iter->key());
           members->push_back(parsed_sets_member_key.member().ToString());
         }
 
         // parsed_sets_meta_value.ModifyCount(-cnt);
         // batch.Put(handles_[kSetsMetaCF], key, meta_value);
-        batch.Delete(handles_[kSetsMetaCF], base_meta_key.Encode());
+        batch->Delete(kSetsMetaCF, base_meta_key.Encode());
         delete iter;
 
       } else {
@@ -838,7 +839,7 @@ rocksdb::Status Redis::SPop(const Slice& key, std::vector<std::string>* members,
           }
           if (sets_index.find(cur_index) != sets_index.end()) {
             del_count++;
-            batch.Delete(handles_[kSetsDataCF], iter->key());
+            batch->Delete(kSetsDataCF, iter->key());
             ParsedSetsMemberKey parsed_sets_member_key(iter->key());
             members->push_back(parsed_sets_member_key.member().ToString());
           }
@@ -848,14 +849,14 @@ rocksdb::Status Redis::SPop(const Slice& key, std::vector<std::string>* members,
           return Status::InvalidArgument("set size overflow");
         }
         parsed_sets_meta_value.ModifyCount(static_cast<int32_t>(-cnt));
-        batch.Put(handles_[kSetsMetaCF], base_meta_key.Encode(), meta_value);
+        batch->Put(kSetsMetaCF, base_meta_key.Encode(), meta_value);
         delete iter;
       }
     }
   } else {
     return s;
   }
-  return db_->Write(default_write_options_, &batch);
+  return batch->Commit();
 }
 
 rocksdb::Status Redis::ResetSpopCount(const std::string& key) { return spop_counts_store_->Remove(key); }
@@ -1042,7 +1043,7 @@ rocksdb::Status Redis::SUnionstore(const Slice& destination, const std::vector<s
     return rocksdb::Status::Corruption("SUnionstore invalid parameter, no keys");
   }
 
-  rocksdb::WriteBatch batch;
+  auto batch = Batch::CreateBatch(this);
   rocksdb::ReadOptions read_options;
   const rocksdb::Snapshot* snapshot;
 
@@ -1097,23 +1098,23 @@ rocksdb::Status Redis::SUnionstore(const Slice& destination, const std::vector<s
       return Status::InvalidArgument("set size overflow");
     }
     parsed_sets_meta_value.SetCount(static_cast<int32_t>(members.size()));
-    batch.Put(handles_[kSetsMetaCF], destination, meta_value);
+    batch->Put(kSetsMetaCF, destination, meta_value);
   } else if (s.IsNotFound()) {
     char str[4];
     EncodeFixed32(str, members.size());
     SetsMetaValue sets_meta_value(Slice(str, sizeof(int32_t)));
     version = sets_meta_value.UpdateVersion();
-    batch.Put(handles_[kSetsMetaCF], base_destination.Encode(), sets_meta_value.Encode());
+    batch->Put(kSetsMetaCF, base_destination.Encode(), sets_meta_value.Encode());
   } else {
     return s;
   }
   for (const auto& member : members) {
     SetsMemberKey sets_member_key(destination, version, member);
     BaseDataValue i_val(Slice{});
-    batch.Put(handles_[kSetsDataCF], sets_member_key.Encode(), i_val.Encode());
+    batch->Put(kSetsDataCF, sets_member_key.Encode(), i_val.Encode());
   }
   *ret = static_cast<int32_t>(members.size());
-  s = db_->Write(default_write_options_, &batch);
+  s = batch->Commit();
   UpdateSpecificKeyStatistics(DataType::kSets, destination.ToString(), statistic);
   value_to_dest = std::move(members);
   return s;
@@ -1312,6 +1313,75 @@ rocksdb::Status Redis::SetsTTL(const Slice& key, uint64_t* timestamp) {
     }
   } else if (s.IsNotFound()) {
     *timestamp = -2;
+  }
+  return s;
+}
+
+Status Redis::SetsRename(const Slice& key, Redis* new_inst, const Slice& newkey) {
+  std::string meta_value;
+  uint32_t statistic = 0;
+  const std::vector<std::string> keys = {key.ToString(), newkey.ToString()};
+  MultiScopeRecordLock ml(lock_mgr_, keys);
+
+  BaseMetaKey base_meta_key(key);
+  BaseMetaKey base_meta_newkey(newkey);
+  rocksdb::Status s = db_->Get(default_read_options_, handles_[kSetsMetaCF], base_meta_key.Encode(), &meta_value);
+  if (s.ok()) {
+    ParsedSetsMetaValue parsed_sets_meta_value(&meta_value);
+    if (parsed_sets_meta_value.IsStale()) {
+      return rocksdb::Status::NotFound("Stale");
+    } else if (parsed_sets_meta_value.Count() == 0) {
+      return rocksdb::Status::NotFound();
+    }
+    // copy a new set with newkey
+    statistic = parsed_sets_meta_value.Count();
+    s = new_inst->GetDB()->Put(default_write_options_, handles_[kSetsMetaCF], base_meta_newkey.Encode(), meta_value);
+    new_inst->UpdateSpecificKeyStatistics(DataType::kSets, newkey.ToString(), statistic);
+
+    // SetsDel key
+    parsed_sets_meta_value.InitialMetaValue();
+    s = db_->Put(default_write_options_, handles_[kSetsMetaCF], base_meta_key.Encode(), meta_value);
+    UpdateSpecificKeyStatistics(DataType::kSets, key.ToString(), statistic);
+  }
+  return s;
+}
+
+Status Redis::SetsRenamenx(const Slice& key, Redis* new_inst, const Slice& newkey) {
+  std::string meta_value;
+  uint32_t statistic = 0;
+  const std::vector<std::string> keys = {key.ToString(), newkey.ToString()};
+  MultiScopeRecordLock ml(lock_mgr_, keys);
+
+  BaseMetaKey base_meta_key(key);
+  BaseMetaKey base_meta_newkey(newkey);
+  rocksdb::Status s = db_->Get(default_read_options_, handles_[kSetsMetaCF], base_meta_key.Encode(), &meta_value);
+  if (s.ok()) {
+    ParsedSetsMetaValue parsed_sets_meta_value(&meta_value);
+    if (parsed_sets_meta_value.IsStale()) {
+      return rocksdb::Status::NotFound("Stale");
+    } else if (parsed_sets_meta_value.Count() == 0) {
+      return rocksdb::Status::NotFound();
+    }
+    // check if newkey exists.
+    std::string new_meta_value;
+    s = new_inst->GetDB()->Get(default_read_options_, handles_[kSetsMetaCF], base_meta_newkey.Encode(),
+                               &new_meta_value);
+    if (s.ok()) {
+      ParsedSetsMetaValue parsed_sets_new_meta_value(&new_meta_value);
+      if (!parsed_sets_new_meta_value.IsStale() && parsed_sets_new_meta_value.Count() != 0) {
+        return Status::Corruption();  // newkey already exists.
+      }
+    }
+
+    // copy a new set with newkey
+    statistic = parsed_sets_meta_value.Count();
+    s = new_inst->GetDB()->Put(default_write_options_, handles_[kSetsMetaCF], base_meta_newkey.Encode(), meta_value);
+    new_inst->UpdateSpecificKeyStatistics(DataType::kSets, newkey.ToString(), statistic);
+
+    // SetsDel key
+    parsed_sets_meta_value.InitialMetaValue();
+    s = db_->Put(default_write_options_, handles_[kSetsMetaCF], base_meta_key.Encode(), meta_value);
+    UpdateSpecificKeyStatistics(DataType::kSets, key.ToString(), statistic);
   }
   return s;
 }

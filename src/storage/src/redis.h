@@ -158,6 +158,18 @@ class Redis {
   virtual Status ZsetsTTL(const Slice& key, uint64_t* timestamp);
   virtual Status SetsTTL(const Slice& key, uint64_t* timestamp);
 
+  virtual Status StringsRename(const Slice& key, Redis* new_inst, const Slice& newkey);
+  virtual Status HashesRename(const Slice& key, Redis* new_inst, const Slice& newkey);
+  virtual Status ListsRename(const Slice& key, Redis* new_inst, const Slice& newkey);
+  virtual Status ZsetsRename(const Slice& key, Redis* new_inst, const Slice& newkey);
+  virtual Status SetsRename(const Slice& key, Redis* new_inst, const Slice& newkey);
+
+  virtual Status StringsRenamenx(const Slice& key, Redis* new_inst, const Slice& newkey);
+  virtual Status HashesRenamenx(const Slice& key, Redis* new_inst, const Slice& newkey);
+  virtual Status ListsRenamenx(const Slice& key, Redis* new_inst, const Slice& newkey);
+  virtual Status ZsetsRenamenx(const Slice& key, Redis* new_inst, const Slice& newkey);
+  virtual Status SetsRenamenx(const Slice& key, Redis* new_inst, const Slice& newkey);
+
   // Strings Commands
   Status Append(const Slice& key, const Slice& value, int32_t* ret);
   Status BitCount(const Slice& key, int64_t start_offset, int64_t end_offset, int32_t* ret, bool have_range);

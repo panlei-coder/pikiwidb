@@ -35,7 +35,7 @@ jobs:
           sh build.sh
 
       - name: Run Go E2E Tests
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ github.workspace }}/build-release
         run: |
           cd ../tests
           go mod tidy
@@ -53,7 +53,7 @@ jobs:
           bash build.sh
 
       - name: Run Go E2E Tests
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ github.workspace }}/build-release
         run: |
           cd ../tests
           go mod tidy

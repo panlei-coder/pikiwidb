@@ -1918,6 +1918,102 @@ Status Storage::Keys(const DataType& data_type, const std::string& pattern, std:
   return Status::OK();
 }
 
+Status Storage::Rename(const std::string& key, const std::string& newkey) {
+  Status ret = Status::NotFound();
+  auto& inst = GetDBInstance(key);
+  auto& new_inst = GetDBInstance(newkey);
+
+  // Strings
+  Status s = inst->StringsRename(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  // Hashes
+  s = inst->HashesRename(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  // Sets
+  s = inst->SetsRename(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  // Lists
+  s = inst->ListsRename(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  // ZSets
+  s = inst->ZsetsRename(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  return ret;
+}
+
+Status Storage::Renamenx(const std::string& key, const std::string& newkey) {
+  Status ret = Status::NotFound();
+  auto& inst = GetDBInstance(key);
+  auto& new_inst = GetDBInstance(newkey);
+
+  // Strings
+  Status s = inst->StringsRenamenx(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  // Hashes
+  s = inst->HashesRenamenx(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  // Sets
+  s = inst->SetsRenamenx(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  // Lists
+  s = inst->ListsRenamenx(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  // ZSets
+  s = inst->ZsetsRenamenx(key, new_inst.get(), newkey);
+  if (s.ok()) {
+    ret = Status::OK();
+  } else if (!s.IsNotFound()) {
+    return s;
+  }
+
+  return ret;
+}
+
 void Storage::ScanDatabase(const DataType& type) {
   for (const auto& inst : insts_) {
     switch (type) {

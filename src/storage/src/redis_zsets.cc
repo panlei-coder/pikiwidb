@@ -1658,6 +1658,75 @@ Status Redis::ZsetsTTL(const Slice& key, uint64_t* timestamp) {
   return s;
 }
 
+Status Redis::ZsetsRename(const Slice& key, Redis* new_inst, const Slice& newkey) {
+  std::string meta_value;
+  uint32_t statistic = 0;
+  const std::vector<std::string> keys = {key.ToString(), newkey.ToString()};
+  MultiScopeRecordLock ml(lock_mgr_, keys);
+
+  BaseMetaKey base_meta_key(key);
+  BaseMetaKey base_meta_newkey(newkey);
+  Status s = db_->Get(default_read_options_, handles_[kZsetsMetaCF], base_meta_key.Encode(), &meta_value);
+  if (s.ok()) {
+    ParsedZSetsMetaValue parsed_zsets_meta_value(&meta_value);
+    if (parsed_zsets_meta_value.IsStale()) {
+      return Status::NotFound("Stale");
+    } else if (parsed_zsets_meta_value.Count() == 0) {
+      return Status::NotFound();
+    }
+    // copy a new zset with newkey
+    statistic = parsed_zsets_meta_value.Count();
+    s = new_inst->GetDB()->Put(default_write_options_, handles_[kZsetsMetaCF], base_meta_newkey.Encode(), meta_value);
+    new_inst->UpdateSpecificKeyStatistics(DataType::kZSets, newkey.ToString(), statistic);
+
+    // ZsetsDel key
+    parsed_zsets_meta_value.InitialMetaValue();
+    s = db_->Put(default_write_options_, handles_[kZsetsMetaCF], base_meta_key.Encode(), meta_value);
+    UpdateSpecificKeyStatistics(DataType::kZSets, key.ToString(), statistic);
+  }
+  return s;
+}
+
+Status Redis::ZsetsRenamenx(const Slice& key, Redis* new_inst, const Slice& newkey) {
+  std::string meta_value;
+  uint32_t statistic = 0;
+  const std::vector<std::string> keys = {key.ToString(), newkey.ToString()};
+  MultiScopeRecordLock ml(lock_mgr_, keys);
+
+  BaseMetaKey base_meta_key(key);
+  BaseMetaKey base_meta_newkey(newkey);
+  Status s = db_->Get(default_read_options_, handles_[kZsetsMetaCF], base_meta_key.Encode(), &meta_value);
+  if (s.ok()) {
+    ParsedZSetsMetaValue parsed_zsets_meta_value(&meta_value);
+    if (parsed_zsets_meta_value.IsStale()) {
+      return Status::NotFound("Stale");
+    } else if (parsed_zsets_meta_value.Count() == 0) {
+      return Status::NotFound();
+    }
+    // check if newkey exist.
+    std::string new_meta_value;
+    s = new_inst->GetDB()->Get(default_read_options_, handles_[kZsetsMetaCF], base_meta_newkey.Encode(),
+                               &new_meta_value);
+    if (s.ok()) {
+      ParsedSetsMetaValue parsed_zsets_new_meta_value(&new_meta_value);
+      if (!parsed_zsets_new_meta_value.IsStale() && parsed_zsets_new_meta_value.Count() != 0) {
+        return Status::Corruption();  // newkey already exists.
+      }
+    }
+
+    // copy a new zset with newkey
+    statistic = parsed_zsets_meta_value.Count();
+    s = new_inst->GetDB()->Put(default_write_options_, handles_[kZsetsMetaCF], base_meta_newkey.Encode(), meta_value);
+    new_inst->UpdateSpecificKeyStatistics(DataType::kZSets, newkey.ToString(), statistic);
+
+    // ZsetsDel key
+    parsed_zsets_meta_value.InitialMetaValue();
+    s = db_->Put(default_write_options_, handles_[kZsetsMetaCF], base_meta_key.Encode(), meta_value);
+    UpdateSpecificKeyStatistics(DataType::kZSets, key.ToString(), statistic);
+  }
+  return s;
+}
+
 void Redis::ScanZsets() {
   rocksdb::ReadOptions iterator_options;
   const rocksdb::Snapshot* snapshot;
