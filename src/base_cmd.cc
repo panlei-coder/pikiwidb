@@ -44,14 +44,19 @@ void BaseCmd::Execute(PClient* client) {
   }
 
   // read consistency (lease read)
-  if (HasFlag(kCmdFlagsReadonly)) {
+  if (g_config.use_raft.load(std::memory_order_relaxed) && HasFlag(CmdFlags::kCmdFlagsReadonly) &&
+      kReadCmdsWithoutReadConsistency.count(Name()) == 0) {
     if (!PRAFT.IsInitialized()) {
       return client->SetRes(CmdRes::kErrOther, "Node has not initialized");
     }
 
     if (!PRAFT.IsLeader()) {
-      return client->SetRes(CmdRes::kErrOther, fmt::format("The current node is not leader, redirect to leader : {}",
-                                                           PRAFT.GetLeaderAddress()));
+      auto leader_addr = PRAFT.GetLeaderAddress();
+      if (leader_addr.empty()) {
+        return client->SetRes(CmdRes::kErrOther, std::string("-CLUSTERDOWN No Raft leader"));
+      }
+
+      return client->SetRes(CmdRes::kErrOther, fmt::format("-MOVED {}", leader_addr));
     }
   }
 

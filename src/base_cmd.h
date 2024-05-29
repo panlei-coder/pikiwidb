@@ -14,6 +14,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <set>
 
 #include "client.h"
 #include "store.h"
@@ -201,6 +202,9 @@ enum AclCategory {
   kAclCategoryScripting = (1 << 20),
   kAclCategoryRaft = (1 << 21),
 };
+
+// Read-only commands but do not require read consistency
+const std::set<std::string> kReadCmdsWithoutReadConsistency = {kCmdNameInfo, };
 
 /**
  * @brief Base class for all commands

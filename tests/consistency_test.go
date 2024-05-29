@@ -93,11 +93,33 @@ var _ = Describe("Consistency", Ordered, func() {
 				leader = s.NewClient()
 				Expect(leader).NotTo(BeNil())
 				Expect(leader.FlushDB(ctx).Err()).NotTo(HaveOccurred())
+				
+				info, err := leader.Do(ctx, "info", "raft").Result()
+				Expect(err).NotTo(HaveOccurred())
+				info_str := info.(string)
+				scanner := bufio.NewScanner(strings.NewReader(info_str))
+				for scanner.Scan() {
+					line := scanner.Text()
+					if strings.Contains(line, "raft_role") {
+						Expect(strings.Split(line, ":")[1]).To(Equal("LEADER"))
+					}
+				}
 			} else {
 				c := s.NewClient()
 				Expect(c).NotTo(BeNil())
-				//Expect(c.FlushDB(ctx).Err().Error()).To(Equal("ERR MOVED 127.0.0.1:12111"))
+				// Expect(c.FlushDB(ctx).Err().Error()).To(Equal("ERR -MOVED 127.0.0.1:12111"))
 				followers = append(followers, c)
+				
+				info, err := c.Do(ctx, "info", "raft").Result()
+				Expect(err).NotTo(HaveOccurred())
+				info_str := info.(string)
+				scanner := bufio.NewScanner(strings.NewReader(info_str))
+				for scanner.Scan() {
+					line := scanner.Text()
+					if strings.Contains(line, "raft_role") {
+						Expect(strings.Split(line, ":")[1]).To(Equal("FOLLOWER"))
+					}
+				}
 			}
 		}
 	})
@@ -121,6 +143,7 @@ var _ = Describe("Consistency", Ordered, func() {
 			"fb": "vb",
 			"fc": "vc",
 		}
+		
 		{
 			// hset write on leader
 			set, err := leader.HSet(ctx, testKey, testValue).Result()
@@ -635,6 +658,29 @@ var _ = Describe("Consistency", Ordered, func() {
 		}
 	})
 
+	It("ReadConsistencyTest", func() {
+		// set write on leader
+		set, err := leader.Set(ctx, "a", "b", 0).Result()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(set).To(Equal("OK"))
+
+		// get from leader
+		get_leader, err := leader.Get(ctx, "a").Result()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(get_leader).To(Equal("b"))
+
+		if len(followers) > 0 {
+			get_follower, err := followers[0].Get(ctx, "a").Result()
+			Expect(err).To(HaveOccurred())
+
+			if strings.Contains(get_follower, "-MOVED") {
+				redirect_leader_ip := strings.Split(get_follower, "MOVED")[1]
+				real_leader_ip := leader.Options().Addr
+				Expect(redirect_leader_ip).To(Equal(real_leader_ip))
+			}
+		}
+	})
+
 	It("ThreeNodesClusterConstructionTest", func() {
 		for _, follower := range followers {
 			info, err := follower.Do(ctx, "info", "raft").Result()
@@ -661,12 +707,7 @@ var _ = Describe("Consistency", Ordered, func() {
 				Expect(ret).To(Equal(OK))
 			}
 		}
-	})
-
-	It("ReadConsistencyTest", func()) {
-		
-	}
-
+	})	
 })
 
 func readChecker(check func(*redis.Client)) {
@@ -675,7 +716,7 @@ func readChecker(check func(*redis.Client)) {
 	time.Sleep(10000 * time.Millisecond)
 
 	// read on followers
-	followerChecker(followers, check)
+	// followerChecker(followers, check)
 }
 
 func followerChecker(fs []*redis.Client, check func(*redis.Client)) {

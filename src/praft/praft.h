@@ -130,6 +130,7 @@ class PRaft : public braft::StateMachine {
   void OnClusterCmdConnectionFailed(EventLoop*, const char* peer_ip, int port);
 
   bool IsLeader() const;
+  void GetLeaderLeaseStatus(braft::LeaderLeaseStatus* status) const;
   std::string GetLeaderAddress() const;
   std::string GetLeaderID() const;
   std::string GetNodeID() const;

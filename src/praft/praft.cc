@@ -13,6 +13,7 @@
 #include "braft/snapshot.h"
 #include "braft/util.h"
 #include "brpc/server.h"
+#include "gflags/gflags.h"
 
 #include "pstd/log.h"
 #include "pstd/pstd_string.h"
@@ -25,6 +26,10 @@
 
 #include "praft_service.h"
 #include "psnapshot.h"
+
+namespace braft {
+DECLARE_bool(raft_enable_leader_lease);
+}  // namespace braft
 
 #define ERROR_LOG_AND_STATUS(msg) \
   ({                              \
@@ -166,6 +171,9 @@ butil::Status PRaft::Init(std::string& group_id, bool initial_conf_is_null) {
     return ERROR_LOG_AND_STATUS("Failed to init raft node");
   }
 
+  // enable leader lease
+  braft::FLAGS_raft_enable_leader_lease = true;
+
   return {0, "OK"};
 }
 
@@ -176,9 +184,21 @@ bool PRaft::IsLeader() const {
   }
 
   braft::LeaderLeaseStatus lease_status;
-  node_->get_leader_lease_status(&lease_status);
+  GetLeaderLeaseStatus(&lease_status);
   auto term = leader_term_.load(butil::memory_order_acquire);
+
+  INFO("term : {}, lease_status : {}", term, lease_status.term);
+
   return term > 0 && term == lease_status.term;
+}
+
+void PRaft::GetLeaderLeaseStatus(braft::LeaderLeaseStatus* status) const {
+  if (!node_) {
+    ERROR("Node is not initialized");
+    return;
+  }
+
+  node_->get_leader_lease_status(status);
 }
 
 std::string PRaft::GetLeaderID() const {
@@ -195,6 +215,11 @@ std::string PRaft::GetLeaderAddress() const {
     return "Failed to get leader id";
   }
   auto id = node_->leader_id();
+  // The cluster does not have a leader.
+  if (id.is_empty()) {
+    return std::string();
+  }
+
   id.addr.port -= g_config.raft_port_offset;
   auto addr = butil::endpoint2str(id.addr);
   return addr.c_str();
@@ -643,7 +668,7 @@ int PRaft::on_snapshot_load(braft::SnapshotReader* reader) {
 
 void PRaft::on_leader_start(int64_t term) {
   leader_term_.store(term, butil::memory_order_release);
-  LOG(INFO) << "Node becomes leader";
+  LOG(INFO) << "Node becomes leader, term : " << term;
 }
 
 void PRaft::on_leader_stop(const butil::Status& status) {
