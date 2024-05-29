@@ -10,11 +10,11 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <set>
 #include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <set>
 
 #include "client.h"
 #include "store.h"
@@ -204,7 +204,9 @@ enum AclCategory {
 };
 
 // Read-only commands but do not require read consistency
-const std::set<std::string> kReadCmdsWithoutReadConsistency = {kCmdNameInfo, };
+const std::set<std::string> kReadCmdsWithoutReadConsistency = {
+    kCmdNameInfo,
+};
 
 /**
  * @brief Base class for all commands
@@ -353,7 +355,7 @@ class BaseCmdGroup : public BaseCmd {
   BaseCmd* GetSubCmd(const std::string& cmdName) override;
 
   // group cmd this function will not be called
-  void DoCmd(PClient* client) override{};
+  void DoCmd(PClient* client) override {};
 
   // group cmd this function will not be called
   bool DoInitial(PClient* client) override;
