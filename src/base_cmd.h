@@ -355,7 +355,7 @@ class BaseCmdGroup : public BaseCmd {
   BaseCmd* GetSubCmd(const std::string& cmdName) override;
 
   // group cmd this function will not be called
-  void DoCmd(PClient* client) override {};
+  void DoCmd(PClient* client) override {}
 
   // group cmd this function will not be called
   bool DoInitial(PClient* client) override;
