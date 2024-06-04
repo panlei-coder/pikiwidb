@@ -246,18 +246,18 @@ uint64_t PRaft::GetTerm(uint64_t log_index) {
   if (!node_) {
     ERROR("Node is not initialized");
     return 0;
-  } else {
-    return node_->get_term(log_index);
   }
+
+  return node_->get_term(log_index);
 }
 
 uint64_t PRaft::GetLastLogIndex(bool is_flush) {
   if (!node_) {
     ERROR("Node is not initialized");
     return 0;
-  } else {
-    return node_->get_last_log_index(is_flush);
   }
+  
+  return node_->get_last_log_index(is_flush);
 }
 
 void PRaft::SendNodeRequest(PClient* client) {
