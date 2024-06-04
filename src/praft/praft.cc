@@ -34,7 +34,7 @@
 namespace pikiwidb {
 
 bool ClusterCmdContext::Set(ClusterCmdType cluster_cmd_type, PClient* client, std::string&& peer_ip, int port,
-                            std::string&& peer_id) {
+                            bool is_learner, std::string&& peer_id) {
   std::unique_lock<std::mutex> lck(mtx_);
   if (client_ != nullptr) {
     return false;
@@ -45,6 +45,7 @@ bool ClusterCmdContext::Set(ClusterCmdType cluster_cmd_type, PClient* client, st
   peer_ip_ = std::move(peer_ip);
   port_ = port;
   peer_id_ = std::move(peer_id);
+  is_learner_ = is_learner;
   return true;
 }
 
@@ -279,6 +280,10 @@ void PRaft::SendNodeAddRequest(PClient* client) {
   req.PushData(std::to_string(unused_node_id).c_str(), std::to_string(unused_node_id).size());
   req.PushData(" ", 1);
   req.PushData(raw_addr.data(), raw_addr.size());
+  if (cluster_cmd_ctx_.IsLearner()) {
+    req.PushData(" ", 1);
+    req.PushData("learner", 7);
+  }
   req.PushData("\r\n", 2);
   client->SendPacket(req);
   client->Clear();
@@ -290,6 +295,10 @@ void PRaft::SendNodeRemoveRequest(PClient* client) {
   UnboundedBuffer req;
   req.PushData("RAFT.NODE REMOVE ", 17);
   req.PushData(cluster_cmd_ctx_.GetPeerID().c_str(), cluster_cmd_ctx_.GetPeerID().size());
+  if (cluster_cmd_ctx_.IsLearner()) {
+    req.PushData(" ", 1);
+    req.PushData("learner", 7);
+  }
   req.PushData("\r\n", 2);
   client->SendPacket(req);
   client->Clear();
@@ -370,7 +379,8 @@ void PRaft::LeaderRedirection(PClient* join_client, const std::string& reply) {
 
   // Reset the target of the connection
   cluster_cmd_ctx_.Clear();
-  auto ret = PRAFT.GetClusterCmdCtx().Set(ClusterCmdType::kJoin, join_client, std::move(peer_ip), port);
+  auto ret = PRAFT.GetClusterCmdCtx().Set(ClusterCmdType::kJoin, join_client, std::move(peer_ip), port,
+                                          cluster_cmd_ctx_.IsLearner());
   if (!ret) {  // other clients have joined
     join_client->SetRes(CmdRes::kErrOther, "Other clients have joined");
     join_client->SendPacket(join_client->Message());
@@ -482,13 +492,17 @@ int PRaft::ProcessClusterRemoveCmdResponse(PClient* client, const char* start, i
   return len;
 }
 
-butil::Status PRaft::AddPeer(const std::string& peer) {
+butil::Status PRaft::AddPeer(const std::string& peer, bool is_learner) {
   if (!node_) {
     ERROR_LOG_AND_STATUS("Node is not initialized");
   }
 
   braft::SynchronizedClosure done;
-  node_->add_peer(peer, &done);
+  if (is_learner) {
+    node_->add_learner(peer, &done);
+  } else {
+    node_->add_peer(peer, &done);
+  }
   done.wait();
 
   if (!done.status().ok()) {
@@ -499,13 +513,17 @@ butil::Status PRaft::AddPeer(const std::string& peer) {
   return {0, "OK"};
 }
 
-butil::Status PRaft::RemovePeer(const std::string& peer) {
+butil::Status PRaft::RemovePeer(const std::string& peer, bool is_learner) {
   if (!node_) {
     return ERROR_LOG_AND_STATUS("Node is not initialized");
   }
 
   braft::SynchronizedClosure done;
-  node_->remove_peer(peer, &done);
+  if (is_learner) {
+    node_->remove_learner(peer, &done);
+  } else {
+    node_->remove_peer(peer, &done);
+  }
   done.wait();
 
   if (!done.status().ok()) {

@@ -80,4 +80,30 @@ class RaftClusterCmd : public BaseCmd {
   static constexpr std::string_view kJoinCmd = "JOIN";
 };
 
+class MasterCmd : public BaseCmd {
+ public:
+  MasterCmd(const std::string &name, int16_t arity);
+
+ protected:
+  bool DoInitial(PClient *client) override;
+
+ private:
+  void DoCmd(PClient *client) override;
+
+  static constexpr std::string_view kInitCmd = "INIT";
+};
+
+class SlaveofCmd : public BaseCmd {
+ public:
+  SlaveofCmd(const std::string &name, int16_t arity);
+
+ protected:
+  bool DoInitial(PClient *client) override;
+
+ private:
+  void DoCmd(PClient *client) override;
+  void DoCmdJoin(PClient *client);
+  void DoCmdRemove(PClient *client);
+};
+
 }  // namespace pikiwidb

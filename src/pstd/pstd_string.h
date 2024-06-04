@@ -34,6 +34,7 @@
 
 #pragma once
 
+#include <arpa/inet.h>
 #include <charconv>
 #include <string>
 #include <vector>
@@ -96,5 +97,9 @@ bool StringHasSpaces(const std::string& str);
 bool IsValidNumber(const std::string& str);
 
 void TrimSlash(std::string& dirName);
+
+bool IsValidIP(const std::string& ip);
+
+bool IsValidPort(const std::string& port);
 
 }  // namespace pstd

@@ -32,6 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <netinet/in.h>
 #include <algorithm>
 #include <cctype>
 #include <cfloat>
@@ -655,6 +656,20 @@ bool IsValidNumber(const std::string& str) {
 void TrimSlash(std::string& dirName) {
   while (dirName.back() == '/') {
     dirName.pop_back();
+  }
+}
+
+bool IsValidIP(const std::string& ip) {
+  struct sockaddr_in sa;
+  return inet_pton(AF_INET, ip.c_str(), &(sa.sin_addr)) != 0;
+}
+
+bool IsValidPort(const std::string& port) {
+  try {
+    int port_num = std::stoi(port);
+    return port_num >= 0 && port_num <= 65535;
+  } catch (const std::exception&) {
+    return false;
   }
 }
 

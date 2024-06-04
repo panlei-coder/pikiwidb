@@ -51,7 +51,7 @@ class ClusterCmdContext {
   ClusterCmdContext() = default;
   ~ClusterCmdContext() = default;
 
-  bool Set(ClusterCmdType cluster_cmd_type, PClient* client, std::string&& peer_ip, int port,
+  bool Set(ClusterCmdType cluster_cmd_type, PClient* client, std::string&& peer_ip, int port, bool is_learner,
            std::string&& peer_id = "");
 
   void Clear();
@@ -59,11 +59,12 @@ class ClusterCmdContext {
   // @todo the function seems useless
   bool IsEmpty();
 
-  ClusterCmdType GetClusterCmdType() { return cluster_cmd_type_; }
-  PClient* GetClient() { return client_; }
-  const std::string& GetPeerIp() { return peer_ip_; }
-  int GetPort() { return port_; }
-  const std::string& GetPeerID() { return peer_id_; }
+  ClusterCmdType GetClusterCmdType() const { return cluster_cmd_type_; }
+  PClient* GetClient() const { return client_; }
+  const std::string& GetPeerIp() const { return peer_ip_; }
+  int GetPort() const { return port_; }
+  const std::string& GetPeerID() const { return peer_id_; }
+  bool IsLearner() const { return is_learner_; }
 
   void ConnectTargetNode();
 
@@ -74,6 +75,7 @@ class ClusterCmdContext {
   std::string peer_ip_;
   int port_ = 0;
   std::string peer_id_;
+  bool is_learner_ = false;
 };
 
 class PRaftWriteDoneClosure : public braft::Closure {
@@ -102,8 +104,8 @@ class PRaft : public braft::StateMachine {
   // Braft API
   //===--------------------------------------------------------------------===//
   butil::Status Init(std::string& group_id, bool initial_conf_is_null);
-  butil::Status AddPeer(const std::string& peer);
-  butil::Status RemovePeer(const std::string& peer);
+  butil::Status AddPeer(const std::string& peer, bool is_learner);
+  butil::Status RemovePeer(const std::string& peer, bool is_learner);
   butil::Status DoSnapshot(int64_t self_snapshot_index = 0, bool is_sync = true);
 
   void ShutDown();

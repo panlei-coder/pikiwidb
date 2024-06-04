@@ -42,6 +42,8 @@ const std::string kCmdNameRenameNX = "renamenx";
 // raft cmd
 const std::string kCmdNameRaftCluster = "raft.cluster";
 const std::string kCmdNameRaftNode = "raft.node";
+const std::string kCmdNameMaster = "master";
+const std::string kCmdNameSlaveof = "slaveof";
 
 // string cmd
 const std::string kCmdNameSet = "set";
@@ -353,7 +355,7 @@ class BaseCmdGroup : public BaseCmd {
   BaseCmd* GetSubCmd(const std::string& cmdName) override;
 
   // group cmd this function will not be called
-  void DoCmd(PClient* client) override{};
+  void DoCmd(PClient* client) override {}
 
   // group cmd this function will not be called
   bool DoInitial(PClient* client) override;

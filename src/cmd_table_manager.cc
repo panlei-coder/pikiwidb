@@ -70,6 +70,8 @@ void CmdTableManager::InitCmdTable() {
   // raft
   ADD_COMMAND(RaftCluster, -1);
   ADD_COMMAND(RaftNode, -2);
+  ADD_COMMAND(Master, -1);
+  ADD_COMMAND(Slaveof, 3);
 
   // keyspace
   ADD_COMMAND(Del, -2);
