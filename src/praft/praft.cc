@@ -256,7 +256,7 @@ uint64_t PRaft::GetLastLogIndex(bool is_flush) {
     ERROR("Node is not initialized");
     return 0;
   }
-  
+
   return node_->get_last_log_index(is_flush);
 }
 
