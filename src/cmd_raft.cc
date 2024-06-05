@@ -135,6 +135,7 @@ void RaftNodeCmd::DoCmdRemove(PClient* client) {
     is_learner = cmd == "LEARNER" ? true : false;
   }
 
+  // @todo If the node to be deleted is the leader, you need to perform the master switchover
   auto s = PRAFT.RemovePeer(client->argv_[2], is_learner);
   if (s.ok()) {
     client->SetRes(CmdRes::kOK);
@@ -317,6 +318,7 @@ void SlaveofCmd::DoCmdRemove(PClient* client) {
     return;
   }
 
+  client->argv_[2] = PRAFT.GetPeerID();
   ClusterRemove(client, true);
 }
 

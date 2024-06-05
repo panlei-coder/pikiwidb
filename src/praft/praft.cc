@@ -158,6 +158,7 @@ butil::Status PRaft::Init(std::string& group_id, bool initial_conf_is_null) {
   // node_options_.disable_cli = FLAGS_disable_cli;
   snapshot_adaptor_ = new PPosixFileSystemAdaptor();
   node_options_.snapshot_file_system_adaptor = &snapshot_adaptor_;
+  node_options_.is_learner = cluster_cmd_ctx_.IsLearner();
 
   node_ = std::make_unique<braft::Node>("pikiwidb", braft::PeerId(addr));  // group_id
   if (node_->init(node_options_) != 0) {
@@ -240,6 +241,13 @@ butil::Status PRaft::GetListPeers(std::vector<braft::PeerId>* peers) {
     ERROR_LOG_AND_STATUS("Node is not initialized");
   }
   return node_->list_peers(peers);
+}
+
+butil::Status PRaft::GetListLearners(std::vector<braft::PeerId>* learners) {
+  if (!node_) {
+    ERROR_LOG_AND_STATUS("Node is not initialized");
+  }
+  return node_->list_learners(learners);
 }
 
 void PRaft::SendNodeRequest(PClient* client) {

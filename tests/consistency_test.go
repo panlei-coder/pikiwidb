@@ -789,24 +789,9 @@ var _ = Describe("Consistency", Ordered, func() {
 	})
 
 	It("ThreeNodesClusterConstructionTest", func() {
+		// raft
 		for _, follower := range followers {
-			info, err := follower.Do(ctx, "info", "raft").Result()
-			Expect(err).NotTo(HaveOccurred())
-			info_str := info.(string)
-			scanner := bufio.NewScanner(strings.NewReader(info_str))
-			var peer_id string
-			var is_member bool
-			for scanner.Scan() {
-				line := scanner.Text()
-				if strings.Contains(line, "raft_peer_id") {
-					parts := strings.Split(line, ":")
-					if len(parts) >= 2 {
-						peer_id = parts[1]
-						is_member = true
-						break
-					}
-				}
-			}
+			peer_id, is_member := getPeerID(follower, ctx)
 
 			if is_member {
 				ret, err := follower.Do(ctx, "raft.node", "remove", peer_id).Result()
@@ -814,9 +799,44 @@ var _ = Describe("Consistency", Ordered, func() {
 				Expect(ret).To(Equal(OK))
 			}
 		}
-	})
 
+		for _, f := range followers {
+			ret, err := f.Do(ctx, "slaveof", "127.0.0.1", "12111").Result()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ret).To(Equal(OK))
+		}
+
+		time.Sleep(10 * time.Second)	
+		
+		for _, f := range followers {
+			ret, err := f.Do(ctx, "slaveof", "no", "one").Result()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ret).To(Equal(OK))
+		}
+	})
 })
+
+func getPeerID(client *redis.Client, ctx context.Context) (string, bool) {
+	info, err := client.Do(ctx, "info", "raft").Result()
+	Expect(err).NotTo(HaveOccurred())
+	info_str := info.(string)
+	scanner := bufio.NewScanner(strings.NewReader(info_str))
+	var peer_id string
+	var is_member bool
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "raft_peer_id") {
+			parts := strings.Split(line, ":")
+			if len(parts) >= 2 {
+				peer_id = parts[1]
+				is_member = true
+				break
+			}
+		}
+	}
+
+	return peer_id, is_member
+}
 
 func readChecker(check func(*redis.Client)) {
 	// read on leader

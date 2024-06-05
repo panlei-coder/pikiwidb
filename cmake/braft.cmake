@@ -16,8 +16,8 @@ ExternalProject_Add(
         extern_braft
         ${EXTERNAL_PROJECT_LOG_ARGS}
         DEPENDS brpc
-        GIT_REPOSITORY "https://github.com/pikiwidb/braft.git"
-        GIT_TAG master
+        GIT_REPOSITORY https://github.com/panlei-coder/braft.git # "https://github.com/pikiwidb/braft.git"
+        GIT_TAG fix_learner_bug # master
         GIT_SHALLOW true
         PREFIX ${BRAFT_SOURCES_DIR}
         UPDATE_COMMAND ""

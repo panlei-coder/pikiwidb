@@ -195,19 +195,35 @@ void InfoCmd::InfoRaft(PClient* client) {
     message += "raft_state:down\r\n";
   }
   message += "raft_role:" + std::string(braft::state2str(node_status.state)) + "\r\n";
-  message += "raft_leader_id:" + node_status.leader_id.to_string() + "\r\n";
+  message += "raft_leader_id:" + PRAFT.GetLeaderID() + "\r\n";
   message += "raft_current_term:" + std::to_string(node_status.term) + "\r\n";
 
   if (PRAFT.IsLeader()) {
+    // except learner
     std::vector<braft::PeerId> peers;
     auto status = PRAFT.GetListPeers(&peers);
     if (!status.ok()) {
       return client->SetRes(CmdRes::kErrOther, status.error_str());
     }
 
+    int count = 0;
     for (int i = 0; i < peers.size(); i++) {
-      message += "raft_node" + std::to_string(i) + ":addr=" + butil::ip2str(peers[i].addr.ip).c_str() +
+      message += "raft_node" + std::to_string(count) + ":addr=" + butil::ip2str(peers[i].addr.ip).c_str() +
                  ",port=" + std::to_string(peers[i].addr.port) + "\r\n";
+      count++;
+    }
+
+    // learner
+    peers.clear();
+    status = PRAFT.GetListLearners(&peers);
+    if (!status.ok()) {
+      return client->SetRes(CmdRes::kErrOther, status.error_str());
+    }
+
+    for (int i = 0; i < peers.size(); i++) {
+      message += "raft_node" + std::to_string(count) + "(learner):addr=" + butil::ip2str(peers[i].addr.ip).c_str() +
+                 ",port=" + std::to_string(peers[i].addr.port) + "\r\n";
+      count++;
     }
   }
 
