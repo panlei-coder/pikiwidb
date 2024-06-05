@@ -86,7 +86,7 @@ void RaftNodeCmd::DoCmdAdd(PClient* client) {
 
   // RAFT.NODE ADD [id] [address:port] [role_type](learner or follower, the default value is follower)
   int argv_num = client->argv_.size();
-  if (argv_num != 4 || argv_num != 5) {
+  if (argv_num != 4 && argv_num != 5) {
     client->SetRes(CmdRes::kWrongNum, client->CmdName());
     return;
   }
@@ -117,7 +117,7 @@ void RaftNodeCmd::DoCmdRemove(PClient* client) {
 
   // RAFT.NODE REMOVE [id] [role_type](learner or follower, the default value is follower)s
   int argv_num = client->argv_.size();
-  if (argv_num != 3 || argv_num != 4) {
+  if (argv_num != 3 && argv_num != 4) {
     client->SetRes(CmdRes::kWrongNum, client->CmdName());
     return;
   }
