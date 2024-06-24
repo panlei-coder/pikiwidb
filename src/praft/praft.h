@@ -7,11 +7,9 @@
 
 #pragma once
 
-#include <filesystem>
 #include <future>
 #include <mutex>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #include "braft/file_system_adaptor.h"
@@ -33,10 +31,9 @@ namespace pikiwidb {
 #define RAFT_GROUP_ID "raft_group_id:"
 #define NOT_LEADER "Not leader"
 
-#define PRAFT PRaft::Instance()
-
 class EventLoop;
 class Binlog;
+class PRaft;
 
 enum ClusterCmdType {
   kNone,
@@ -45,10 +42,8 @@ enum ClusterCmdType {
 };
 
 class ClusterCmdContext {
-  friend class PRaft;
-
  public:
-  ClusterCmdContext() = default;
+  ClusterCmdContext(PRaft* raft) : praft_(raft) {}
   ~ClusterCmdContext() = default;
 
   bool Set(ClusterCmdType cluster_cmd_type, PClient* client, std::string&& peer_ip, int port,
@@ -68,6 +63,7 @@ class ClusterCmdContext {
   void ConnectTargetNode();
 
  private:
+  PRaft* praft_;
   ClusterCmdType cluster_cmd_type_ = ClusterCmdType::kNone;
   std::mutex mtx_;
   PClient* client_ = nullptr;
@@ -94,9 +90,11 @@ class PRaftWriteDoneClosure : public braft::Closure {
 class PRaft : public braft::StateMachine {
  public:
   PRaft() = default;
-  ~PRaft() override = default;
-
-  static PRaft& Instance();
+  ~PRaft() override {
+    ShutDown();
+    Join();
+    Clear();
+  }
 
   //===--------------------------------------------------------------------===//
   // Braft API
@@ -161,9 +159,9 @@ class PRaft : public braft::StateMachine {
   std::string raw_addr_;             // ip:port of this node
 
   scoped_refptr<braft::FileSystemAdaptor> snapshot_adaptor_ = nullptr;
-  ClusterCmdContext cluster_cmd_ctx_;  // context for cluster join/remove command
-  std::string group_id_;               // group id
-  int db_id_ = 0;                      // db_id
+  ClusterCmdContext cluster_cmd_ctx_{this};  // context for cluster join/remove command
+  std::string group_id_;                     // group id
+  int db_id_ = 0;                            // db_id
 };
 
 }  // namespace pikiwidb

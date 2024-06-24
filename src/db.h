@@ -7,11 +7,10 @@
 
 #pragma once
 
-#include <filesystem>
+#include <memory>
 #include <string>
 
-#include "pstd/log.h"
-#include "pstd/noncopyable.h"
+#include "praft/praft.h"
 #include "storage/storage.h"
 
 namespace pikiwidb {
@@ -39,6 +38,8 @@ class DB {
 
   int GetDbIndex() { return db_index_; }
 
+  PRaft* GetPRaft() { return praft_.get(); }
+
  private:
   const int db_index_ = 0;
   const std::string db_path_;
@@ -50,6 +51,7 @@ class DB {
    */
   std::shared_mutex storage_mutex_;
   std::unique_ptr<storage::Storage> storage_;
+  std::unique_ptr<PRaft> praft_{std::make_unique<PRaft>()};
   bool opened_ = false;
 };
 

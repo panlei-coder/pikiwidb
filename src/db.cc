@@ -6,7 +6,6 @@
  */
 
 #include "db.h"
-#include <algorithm>
 
 #include "config.h"
 #include "praft/praft.h"
@@ -25,20 +24,19 @@ rocksdb::Status DB::Open() {
   storage::StorageOptions storage_options;
   storage_options.options = g_config.GetRocksDBOptions();
   storage_options.table_options = g_config.GetRocksDBBlockBasedTableOptions();
-
   storage_options.options.ttl = g_config.rocksdb_ttl_second.load(std::memory_order_relaxed);
   storage_options.options.periodic_compaction_seconds =
       g_config.rocksdb_periodic_second.load(std::memory_order_relaxed);
-
   storage_options.small_compaction_threshold = g_config.small_compaction_threshold.load();
   storage_options.small_compaction_duration_threshold = g_config.small_compaction_duration_threshold.load();
 
   if (g_config.use_raft.load(std::memory_order_relaxed)) {
-    storage_options.append_log_function = [&r = PRAFT](const Binlog& log, std::promise<rocksdb::Status>&& promise) {
+    storage_options.append_log_function = [&r = *praft_](const Binlog& log, std::promise<rocksdb::Status>&& promise) {
       r.AppendLog(log, std::move(promise));
     };
-    storage_options.do_snapshot_function =
-        std::bind(&pikiwidb::PRaft::DoSnapshot, &pikiwidb::PRAFT, std::placeholders::_1, std::placeholders::_2);
+    storage_options.do_snapshot_function = [&r = *praft_](int64_t self_snapshot_index, bool is_sync) {
+      return r.DoSnapshot(self_snapshot_index, is_sync);
+    };
   }
 
   storage_options.db_instance_num = g_config.db_instance_num.load();
@@ -108,11 +106,12 @@ void DB::LoadDBFromCheckpoint(const std::string& checkpoint_path, bool sync [[ma
   storage_options.options.periodic_compaction_seconds =
       g_config.rocksdb_periodic_second.load(std::memory_order_relaxed);
   if (g_config.use_raft.load(std::memory_order_relaxed)) {
-    storage_options.append_log_function = [&r = PRAFT](const Binlog& log, std::promise<rocksdb::Status>&& promise) {
+    storage_options.append_log_function = [&r = *praft_](const Binlog& log, std::promise<rocksdb::Status>&& promise) {
       r.AppendLog(log, std::move(promise));
     };
-    storage_options.do_snapshot_function =
-        std::bind(&pikiwidb::PRaft::DoSnapshot, &pikiwidb::PRAFT, std::placeholders::_1, std::placeholders::_2);
+    storage_options.do_snapshot_function = [&r = *praft_](int64_t self_snapshot_index, bool is_sync) {
+      return r.DoSnapshot(self_snapshot_index, is_sync);
+    };
   }
   storage_ = std::make_unique<storage::Storage>();
 

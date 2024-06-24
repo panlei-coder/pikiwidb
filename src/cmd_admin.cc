@@ -138,7 +138,10 @@ void PingCmd::DoCmd(PClient* client) { client->SetRes(CmdRes::kPong, "PONG"); }
 InfoCmd::InfoCmd(const std::string& name, int16_t arity)
     : BaseCmd(name, arity, kCmdFlagsAdmin | kCmdFlagsReadonly, kAclCategoryAdmin) {}
 
-bool InfoCmd::DoInitial(PClient* client) { return true; }
+bool InfoCmd::DoInitial(PClient* client) {
+  praft_ = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
+  return true;
+}
 
 // @todo The info raft command is only supported for the time being
 void InfoCmd::DoCmd(PClient* client) {
@@ -175,19 +178,20 @@ void InfoCmd::InfoRaft(PClient* client) {
     return client->SetRes(CmdRes::kWrongNum, client->CmdName());
   }
 
-  if (!PRAFT.IsInitialized()) {
+  assert(praft_);
+  if (!praft_->IsInitialized()) {
     return client->SetRes(CmdRes::kErrOther, "Don't already cluster member");
   }
 
-  auto node_status = PRAFT.GetNodeStatus();
+  auto node_status = praft_->GetNodeStatus();
   if (node_status.state == braft::State::STATE_END) {
     return client->SetRes(CmdRes::kErrOther, "Node is not initialized");
   }
 
   std::string message;
-  message += "raft_group_id:" + PRAFT.GetGroupID() + "\r\n";
-  message += "raft_node_id:" + PRAFT.GetNodeID() + "\r\n";
-  message += "raft_peer_id:" + PRAFT.GetPeerID() + "\r\n";
+  message += "raft_group_id:" + praft_->GetGroupID() + "\r\n";
+  message += "raft_node_id:" + praft_->GetNodeID() + "\r\n";
+  message += "raft_peer_id:" + praft_->GetPeerID() + "\r\n";
   if (braft::is_active_state(node_status.state)) {
     message += "raft_state:up\r\n";
   } else {
@@ -197,9 +201,9 @@ void InfoCmd::InfoRaft(PClient* client) {
   message += "raft_leader_id:" + node_status.leader_id.to_string() + "\r\n";
   message += "raft_current_term:" + std::to_string(node_status.term) + "\r\n";
 
-  if (PRAFT.IsLeader()) {
+  if (praft_->IsLeader()) {
     std::vector<braft::PeerId> peers;
-    auto status = PRAFT.GetListPeers(&peers);
+    auto status = praft_->GetListPeers(&peers);
     if (!status.ok()) {
       return client->SetRes(CmdRes::kErrOther, status.error_str());
     }
