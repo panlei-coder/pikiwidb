@@ -89,7 +89,7 @@ class PRaftWriteDoneClosure : public braft::Closure {
 
 class PRaft : public braft::StateMachine {
  public:
-  PRaft() = default;
+  PRaft(uint32_t db_id) : db_id_(db_id) {}
   ~PRaft() override {
     ShutDown();
     Join();
@@ -157,7 +157,7 @@ class PRaft : public braft::StateMachine {
   scoped_refptr<braft::FileSystemAdaptor> snapshot_adaptor_ = nullptr;
   ClusterCmdContext cluster_cmd_ctx_{this};  // context for cluster join/remove command
   std::string group_id_;                     // group id
-  int db_id_ = 0;                            // db_id
+  uint32_t db_id_ = 0;                       // db_id
 };
 
 }  // namespace pikiwidb

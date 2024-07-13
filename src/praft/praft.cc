@@ -114,14 +114,14 @@ butil::Status PRaft::Init(const std::string& group_id, bool initial_conf_is_null
   // node_options_.election_timeout_ms = FLAGS_election_timeout_ms;
   // node_options_.disable_cli = FLAGS_disable_cli;
 
-  node_ = std::make_unique<braft::Node>(group_id, braft::PeerId(PSTORE.GetEndPoint()));  // group_id
+  node_ = std::make_unique<braft::Node>(group_id, braft::PeerId(PSTORE.GetEndPoint(), db_id_));  // group_id
   if (node_->init(node_options) != 0) {
     node_.reset();
     return ERROR_LOG_AND_STATUS("Failed to init raft node");
   }
   group_id_ = group_id;
 
-  INFO("Initialized praft successfully: group_id_={}, node_id={}", group_id_, GetNodeID());
+  INFO("Initialized praft successfully: node_id={}", GetNodeID());
   return {0, "OK"};
 }
 
@@ -205,7 +205,8 @@ void PRaft::SendNodeRequest(PClient* client) {
   switch (cluster_cmd_type) {
     case ClusterCmdType::kJoin: {
       // SendNodeInfoRequest(client, "DATA");
-      SendNodeAddRequest(client);
+      SendNodeInfoRequest(client, "DATA");
+      // SendNodeAddRequest(client);
     } break;
     case ClusterCmdType::kRemove:
       SendNodeRemoveRequest(client);
@@ -233,13 +234,7 @@ void PRaft::SendNodeAddRequest(PClient* client) {
   auto raw_addr = g_config.ip.ToString() + ":" + std::to_string(port);
   auto msg = fmt::format("RAFT.NODE ADD {} {}\r\n", group_id_, raw_addr);
   client->SendPacket(msg);
-  // UnboundedBuffer req;
-  // req.PushData("RAFT.NODE ADD ", 14);
-  // req.PushData(std::to_string(unused_node_id).c_str(), std::to_string(unused_node_id).size());
-  // req.PushData(" ", 1);
-  // req.PushData(raw_addr.data(), raw_addr.size());
-  // req.PushData("\r\n", 2);
-  // client->SendPacket(req);
+  INFO("Sent join request to leader successfully");
   client->Clear();
 }
 
