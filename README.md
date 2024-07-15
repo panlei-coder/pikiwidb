@@ -34,7 +34,7 @@ Execute this command to start compiling Pikiwidb:
 Pikiwidb is compiled by default in release mode, which does not support debugging. If debugging is needed, compile in debug mode.
 
 ```bash
-./clean.sh
+./clear.sh
 ./build.sh --debug
 ```
 
