@@ -111,7 +111,7 @@ butil::Status PRaft::Init(std::string& group_id, bool initial_conf_is_null) {
   // the case that it becomes the leader while the service is unreacheable by
   // clients.
   // Notice the default options of server is used here. Check out details from
-  // the doc of brpc if you would like change some options;
+  // the doc of brpc if you would like change some option;
   if (server_->Start(port, nullptr) != 0) {
     server_.reset();
     return ERROR_LOG_AND_STATUS("Failed to start server");
@@ -242,7 +242,7 @@ butil::Status PRaft::GetListPeers(std::vector<braft::PeerId>* peers) {
   return node_->list_peers(peers);
 }
 
-uint64_t PRaft::GetTerm(uint64_t log_index) {
+storage::LogIndex PRaft::GetTerm(uint64_t log_index) {
   if (!node_) {
     ERROR("Node is not initialized");
     return 0;
@@ -251,7 +251,7 @@ uint64_t PRaft::GetTerm(uint64_t log_index) {
   return node_->get_term(log_index);
 }
 
-uint64_t PRaft::GetLastLogIndex(bool is_flush) {
+storage::LogIndex PRaft::GetLastLogIndex(bool is_flush) {
   if (!node_) {
     ERROR("Node is not initialized");
     return 0;
@@ -548,8 +548,7 @@ butil::Status PRaft::DoSnapshot(int64_t self_snapshot_index, bool is_sync) {
     return done.status();
   } else {
     node_->snapshot(nullptr, self_snapshot_index);
-    butil::Status status;
-    return status;
+    return butil::Status{};
   }
 }
 
@@ -665,7 +664,6 @@ int PRaft::on_snapshot_load(braft::SnapshotReader* reader) {
     2. When a node is improperly shut down and restarted, the minimum flush-index should
        be obtained as the starting point for fault recovery.
     */
-    // @todo GetSmallestFlushedLogIndex
     uint64_t replay_point = PSTORE.GetBackend(db_id_)->GetStorage()->GetSmallestFlushedLogIndex();
     node_->set_self_playback_point(replay_point);
     is_node_first_start_up_ = false;

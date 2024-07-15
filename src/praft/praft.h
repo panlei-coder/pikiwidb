@@ -18,6 +18,7 @@
 #include "braft/raft.h"
 #include "brpc/server.h"
 #include "rocksdb/status.h"
+#include "storage/storage.h"
 
 #include "client.h"
 
@@ -137,8 +138,8 @@ class PRaft : public braft::StateMachine {
   std::string GetGroupID() const;
   braft::NodeStatus GetNodeStatus() const;
   butil::Status GetListPeers(std::vector<braft::PeerId>* peers);
-  uint64_t GetTerm(uint64_t log_index);
-  uint64_t GetLastLogIndex(bool is_flush = false);
+  storage::LogIndex GetTerm(uint64_t log_index);
+  storage::LogIndex GetLastLogIndex(bool is_flush = false);
 
   bool IsInitialized() const { return node_ != nullptr && server_ != nullptr; }
 

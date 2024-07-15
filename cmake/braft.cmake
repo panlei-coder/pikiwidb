@@ -17,10 +17,8 @@ ExternalProject_Add(
         ${EXTERNAL_PROJECT_LOG_ARGS}
         DEPENDS brpc
         # The pr on braft is not merged, so I am using my own warehouse to run the test for the time being
-        GIT_REPOSITORY https://github.com/panlei-coder/braft.git
-        GIT_TAG merge-master-playback
-        # GIT_REPOSITORY "https://github.com/pikiwidb/braft.git"
-        # GIT_TAG master
+        GIT_REPOSITORY "https://github.com/pikiwidb/braft.git"
+        GIT_TAG v1.1.2-alpha1
         GIT_SHALLOW true
         PREFIX ${BRAFT_SOURCES_DIR}
         UPDATE_COMMAND ""
