@@ -9,7 +9,6 @@
 
 #include <cassert>
 
-#include "braft/raft.h"
 #include "braft/snapshot.h"
 #include "braft/util.h"
 #include "brpc/server.h"
