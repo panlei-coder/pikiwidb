@@ -245,7 +245,6 @@ Status Storage::LoadCheckpointInternal(const std::string& checkpoint_sub_path, c
                                        int index) {
   auto rocksdb_path = AppendSubDirectory(db_sub_path, index);  // ./db/db_id/index
   auto tmp_rocksdb_path = rocksdb_path + ".tmp";               // ./db/db_id/index.tmp
-  insts_[index].reset();
 
   auto source_dir = AppendSubDirectory(checkpoint_sub_path, index);
   // 1) Rename the original db to db.tmp, and only perform the maximum possible recovery of data

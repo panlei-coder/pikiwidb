@@ -18,7 +18,7 @@ ExternalProject_Add(
         DEPENDS brpc
         # The pr on braft is not merged, so I am using my own warehouse to run the test for the time being
         GIT_REPOSITORY "https://github.com/pikiwidb/braft.git"
-        GIT_TAG v1.1.2-alpha1
+        GIT_TAG v1.1.2-alpha2
         GIT_SHALLOW true
         PREFIX ${BRAFT_SOURCES_DIR}
         UPDATE_COMMAND ""

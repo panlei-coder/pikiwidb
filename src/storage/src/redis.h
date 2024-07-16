@@ -110,9 +110,7 @@ class Redis {
   void UpdateAppliedLogIndexOfColumnFamily(size_t cf_idx, LogIndex logidx, SequenceNumber seqno) {
     log_index_of_all_cfs_.Update(cf_idx, logidx, seqno);
   }
-  LogIndex GetSmallestFlushedLogIndex() const {
-    return log_index_of_all_cfs_.GetSmallestLogIndex(-1).smallest_flushed_log_index;
-  }
+  LogIndex GetSmallestFlushedLogIndex() const { return log_index_of_all_cfs_.GetLastFlushIndex().GetLogIndex(); }
   bool IsRestarting() const { return is_starting_; }
   void StartingPhaseEnd() { is_starting_ = false; }
 
