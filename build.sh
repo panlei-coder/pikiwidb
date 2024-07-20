@@ -16,7 +16,7 @@ BUILD_TYPE=Release
 VERBOSE=0
 CMAKE_FLAGS=""
 MAKE_FLAGS=""
-PREFIX="build"
+PREFIX="cmake-build"
 
 ARGS=`getopt -a -o h -l help,debug,verbose,prefix: -- "$@"`
 function show_help() {
