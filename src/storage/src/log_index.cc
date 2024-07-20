@@ -7,6 +7,8 @@
 
 #include "log_index.h"
 
+#include "pstd/log.h"
+
 #include <algorithm>
 #include <cinttypes>
 #include <set>
@@ -167,6 +169,7 @@ void LogIndexAndSequenceCollectorPurger::OnFlushCompleted(rocksdb::DB *db,
   auto count = count_.fetch_add(1);
 
   if (count % 10 == 0) {
+    INFO("do snapshot after flush: {}", smallest_flushed_log_index);
     callback_(smallest_flushed_log_index, false);
   }
 

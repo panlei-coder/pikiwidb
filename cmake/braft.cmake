@@ -18,8 +18,9 @@ ExternalProject_Add(
         extern_braft
         ${EXTERNAL_PROJECT_LOG_ARGS}
         DEPENDS brpc
+        # The pr on braft is not merged, so I am using my own warehouse to run the test for the time being
         GIT_REPOSITORY "https://github.com/pikiwidb/braft.git"
-        GIT_TAG master
+        GIT_TAG v1.1.2-alpha2
         GIT_SHALLOW true
         CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${LIB_BUILD_TYPE}
