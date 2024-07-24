@@ -93,7 +93,7 @@ var _ = Describe("Consistency", Ordered, func() {
 				leader = s.NewClient()
 				Expect(leader).NotTo(BeNil())
 				Expect(leader.FlushDB(ctx).Err()).NotTo(HaveOccurred())
-				
+
 				info, err := leader.Do(ctx, "info", "raft").Result()
 				Expect(err).NotTo(HaveOccurred())
 				info_str := info.(string)
@@ -107,9 +107,9 @@ var _ = Describe("Consistency", Ordered, func() {
 			} else {
 				c := s.NewClient()
 				Expect(c).NotTo(BeNil())
-				// Expect(c.FlushDB(ctx).Err().Error()).To(Equal("ERR -MOVED 127.0.0.1:12111"))
+				Expect(c.FlushDB(ctx).Err().Error()).To(Equal("ERR -MOVED 127.0.0.1:12111"))
 				followers = append(followers, c)
-				
+
 				info, err := c.Do(ctx, "info", "raft").Result()
 				Expect(err).NotTo(HaveOccurred())
 				info_str := info.(string)
@@ -143,7 +143,7 @@ var _ = Describe("Consistency", Ordered, func() {
 			"fb": "vb",
 			"fc": "vc",
 		}
-		
+
 		{
 			// hset write on leader
 			set, err := leader.HSet(ctx, testKey, testValue).Result()
@@ -860,7 +860,7 @@ var _ = Describe("Consistency", Ordered, func() {
 				Expect(ret).To(Equal(OK))
 			}
 		}
-	})	
+	})
 })
 
 func readChecker(check func(*redis.Client)) {

@@ -207,11 +207,6 @@ enum AclCategory {
   kAclCategoryRaft = (1 << 21),
 };
 
-// Read-only commands but do not require read consistency
-const std::set<std::string> kReadCmdsWithoutReadConsistency = {
-    kCmdNameInfo,
-};
-
 /**
  * @brief Base class for all commands
  * BaseCmd, as the base class for all commands, mainly implements some common functions

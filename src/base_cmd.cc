@@ -39,30 +39,10 @@ std::vector<std::string> BaseCmd::CurrentKey(PClient* client) const { return std
 void BaseCmd::Execute(PClient* client) {
   DEBUG("execute command: {}", client->CmdName());
 
-  if (g_config.use_raft.load()) {
-    // 1. If PRAFT is not initialized yet, return an error message to the client for both read and write commands.
-    if (!PRAFT.IsInitialized() && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
-      DEBUG("drop command: {}", client->CmdName());
-      return client->SetRes(CmdRes::kErrOther, "PRAFT is not initialized");
-    }
-
-    // 2. If PRAFT is initialized and the current node is not the leader, return a redirection message for write
-    // commands.
-    if (HasFlag(kCmdFlagsWrite) && !PRAFT.IsLeader()) {
-      return client->SetRes(CmdRes::kErrOther, fmt::format("MOVED {}", PRAFT.GetLeaderAddress()));
-    }
-  }
-
-  auto dbIndex = client->GetCurrentDB();
-  if (!HasFlag(kCmdFlagsExclusive)) {
-    PSTORE.GetBackend(dbIndex)->LockShared();
-  }
-
-  // read consistency (lease read)
-  if (g_config.use_raft.load(std::memory_order_relaxed) && HasFlag(CmdFlags::kCmdFlagsReadonly) &&
-      kReadCmdsWithoutReadConsistency.count(Name()) == 0) {
+  // read consistency (lease read) / write redirection
+  if (g_config.use_raft.load(std::memory_order_relaxed) && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
     if (!PRAFT.IsInitialized()) {
-      return client->SetRes(CmdRes::kErrOther, "Node has not initialized");
+      return client->SetRes(CmdRes::kErrOther, "PRAFT is not initialized");
     }
 
     if (!PRAFT.IsLeader()) {
@@ -73,6 +53,11 @@ void BaseCmd::Execute(PClient* client) {
 
       return client->SetRes(CmdRes::kErrOther, fmt::format("-MOVED {}", leader_addr));
     }
+  }
+
+  auto dbIndex = client->GetCurrentDB();
+  if (!HasFlag(kCmdFlagsExclusive)) {
+    PSTORE.GetBackend(dbIndex)->LockShared();
   }
 
   if (!DoInitial(client)) {
