@@ -37,8 +37,10 @@ rocksdb::Status DB::Open() {
     storage_options.append_log_function = [&r = PRAFT](const Binlog& log, std::promise<rocksdb::Status>&& promise) {
       r.AppendLog(log, std::move(promise));
     };
-    storage_options.do_snapshot_function =
-        std::bind(&pikiwidb::PRaft::DoSnapshot, &pikiwidb::PRAFT, std::placeholders::_1, std::placeholders::_2);
+    storage_options.do_snapshot_function = [raft = &pikiwidb::PRAFT](auto&& self_snapshot_index, auto&& is_sync) {
+      raft->DoSnapshot(std::forward<decltype(self_snapshot_index)>(self_snapshot_index),
+                       std::forward<decltype(is_sync)>(is_sync));
+    };
   }
 
   storage_options.db_instance_num = g_config.db_instance_num.load();
@@ -92,6 +94,13 @@ void DB::LoadDBFromCheckpoint(const std::string& checkpoint_path, bool sync [[ma
 
   std::lock_guard<std::shared_mutex> lock(storage_mutex_);
   opened_ = false;
+  // close the old storage, then open the new storage
+  std::unique_ptr<storage::Storage> old_storage = std::move(storage_);
+  if (old_storage != nullptr) {
+    old_storage->Close();
+    old_storage.reset();
+  }
+  storage_ = std::make_unique<storage::Storage>();
   auto result = storage_->LoadCheckpoint(checkpoint_sub_path, db_path_);
 
   for (auto& r : result) {
@@ -114,11 +123,15 @@ void DB::LoadDBFromCheckpoint(const std::string& checkpoint_path, bool sync [[ma
     storage_options.do_snapshot_function =
         std::bind(&pikiwidb::PRaft::DoSnapshot, &pikiwidb::PRAFT, std::placeholders::_1, std::placeholders::_2);
   }
-  storage_ = std::make_unique<storage::Storage>();
 
   if (auto s = storage_->Open(storage_options, db_path_); !s.ok()) {
     ERROR("Storage open failed! {}", s.ToString());
     abort();
+  }
+
+  // in single-mode, pikiwidb will enable wal
+  if (!g_config.use_raft.load(std::memory_order_relaxed)) {
+    storage_->DisableWal(false);
   }
 
   opened_ = true;

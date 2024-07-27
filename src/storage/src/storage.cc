@@ -245,7 +245,6 @@ Status Storage::LoadCheckpointInternal(const std::string& checkpoint_sub_path, c
                                        int index) {
   auto rocksdb_path = AppendSubDirectory(db_sub_path, index);  // ./db/db_id/index
   auto tmp_rocksdb_path = rocksdb_path + ".tmp";               // ./db/db_id/index.tmp
-  insts_[index].reset();
 
   auto source_dir = AppendSubDirectory(checkpoint_sub_path, index);
   // 1) Rename the original db to db.tmp, and only perform the maximum possible recovery of data
@@ -2515,6 +2514,15 @@ Status Storage::OnBinlogWrite(const pikiwidb::Binlog& log, LogIndex log_idx) {
   }
   inst->UpdateLogIndex(log_idx, first_seqno);
   return s;
+}
+
+LogIndex Storage::GetSmallestFlushedLogIndex() const {
+  LogIndex smallest_flushed_log_index = INT64_MAX;
+  for (auto& inst : insts_) {
+    smallest_flushed_log_index = std::min(smallest_flushed_log_index, inst->GetSmallestFlushedLogIndex());
+  }
+
+  return smallest_flushed_log_index;
 }
 
 }  //  namespace storage

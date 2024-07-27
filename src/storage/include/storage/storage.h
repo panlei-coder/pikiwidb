@@ -1123,6 +1123,8 @@ class Storage {
   void GetRocksDBInfo(std::string& info);
   Status OnBinlogWrite(const pikiwidb::Binlog& log, LogIndex log_idx);
 
+  LogIndex GetSmallestFlushedLogIndex() const;
+
  private:
   std::vector<std::unique_ptr<Redis>> insts_;
   std::unique_ptr<SlotIndexer> slot_indexer_;

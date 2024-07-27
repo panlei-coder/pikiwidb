@@ -34,7 +34,7 @@ scl enable devtoolset-11 bash
 PikiwiDB 默认以 release 模式编译，不支持调试。如果需要调试，请以 debug 模式编译。
 
 ```bash
-./clean.sh
+./clear.sh
 ./build.sh --debug
 ```
 

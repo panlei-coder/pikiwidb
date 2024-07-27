@@ -18,6 +18,7 @@
 #include "braft/raft.h"
 #include "brpc/server.h"
 #include "rocksdb/status.h"
+#include "storage/storage.h"
 
 #include "client.h"
 
@@ -140,6 +141,8 @@ class PRaft : public braft::StateMachine {
   braft::NodeStatus GetNodeStatus() const;
   butil::Status GetListPeers(std::vector<braft::PeerId>* peers);
   butil::Status GetListLearners(std::vector<braft::PeerId>* learners);
+  storage::LogIndex GetTerm(uint64_t log_index);
+  storage::LogIndex GetLastLogIndex(bool is_flush = false);
 
   bool IsInitialized() const { return node_ != nullptr && server_ != nullptr; }
 
@@ -167,6 +170,8 @@ class PRaft : public braft::StateMachine {
   ClusterCmdContext cluster_cmd_ctx_;  // context for cluster join/remove command
   std::string group_id_;               // group id
   int db_id_ = 0;                      // db_id
+
+  bool is_node_first_start_up_ = true;
 };
 
 }  // namespace pikiwidb

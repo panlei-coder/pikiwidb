@@ -133,8 +133,8 @@ class LogIndexOfColumnFamilies {
     last_flush_index_.SetLogIndexSeqnoPair(lastest_flush_log_index, lastest_flush_sequence_number);
   }
 
-  // for gtest
-  LogIndexSeqnoPair &GetLastFlushIndex() { return last_flush_index_; }
+  // get the the latest global minimum flushed_index
+  const LogIndexSeqnoPair &GetLastFlushIndex() const { return last_flush_index_; }
 
   LogIndexPair &GetCFStatus(size_t cf) { return cf_[cf]; }
 
