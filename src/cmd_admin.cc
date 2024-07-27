@@ -135,8 +135,7 @@ bool PingCmd::DoInitial(PClient* client) { return true; }
 
 void PingCmd::DoCmd(PClient* client) { client->SetRes(CmdRes::kPong, "PONG"); }
 
-InfoCmd::InfoCmd(const std::string& name, int16_t arity)
-    : BaseCmd(name, arity, kCmdFlagsAdmin | kCmdFlagsReadonly, kAclCategoryAdmin) {}
+InfoCmd::InfoCmd(const std::string& name, int16_t arity) : BaseCmd(name, arity, kCmdFlagsAdmin, kAclCategoryAdmin) {}
 
 bool InfoCmd::DoInitial(PClient* client) { return true; }
 
