@@ -247,7 +247,7 @@ butil::Status PRaft::GetListLearners(std::vector<braft::PeerId>* learners) {
   if (!node_) {
     ERROR_LOG_AND_STATUS("Node is not initialized");
   }
-  
+
   return node_->list_learners(learners);
 }
 
