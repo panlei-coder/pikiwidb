@@ -1,0 +1,98 @@
+syntax="proto3";
+package pikiwidb;
+option cc_generic_services = true;
+
+message GetClusterInfoRequest {
+};
+
+message GetClusterInfoResponse {
+  repeated Store store = 1;
+};
+
+message Store {
+  required int64 store_id = 1;
+  required string ip = 2;
+  required int32 port = 3;
+  required StoreState state = 4;
+  repeated Region region = 5;
+};
+
+message Region {
+  required int64 region_id = 1;
+  optional string start_key = 2;
+  optional string end_key = 3;
+  repeated RegionEpoch region_epoch = 4;
+  repeated Peer peers = 5;
+};
+
+message RegionEpoch {
+  required int64 conf_change_ver = 1; // conf change version
+  required int64 region_ver = 2; // region version (split or merge)
+};
+
+enum StoreState {
+  UP = 0;
+  OFFLINE = 1;
+  TOMBSTONE = 2;
+};
+
+message CreateAllRegionsRequest {
+  required int64 regions_count = 1;
+  required int32 region_peers_count = 2;
+  repeated RegionOptions regionOptions = 3;
+};
+
+message CreateAllRegionsResponse {
+};
+
+message DeleteAllRegionsRequest {
+};
+
+message DeleteAllRegionsResponse {
+};
+
+message AddStoreRequest {
+  required string ip = 1;
+  required int32 port = 2;
+};
+
+message AddStoreResponse {
+  required int64 store_id = 1;
+};
+
+message RemoveStoreRequest {
+  required int64 store_id = 1;
+};
+
+message AddStoreResponse {
+};
+
+message OpenPDSchedulingRequest {
+};
+
+message OpenPDSchedulingResponse {
+  required bool is_open = 1;
+};
+
+message ClosePDSchedulingRequest {
+};
+
+message ClosePDSchedulingResponse {
+  required bool is_close = 1;
+};
+
+service PDService {
+    rpc CreateAllRegions(CreateAllRegionsRequest) returns (CreateAllRegionsResponse);
+
+    rpc DeleteAllRegions(DeleteAllRegionsRequest) returns (DeleteAllRegionsResponse);
+
+    rpc AddStore(AddStoreRequest) returns (AddStoreResponse);
+
+    rpc RemoveStore(RemoveStoreRequest) returns (RemoveStoreResponse);
+
+    rpc GetClusterInfo(GetClusterInfoRequest) returns (GetClusterInfoResponse);
+
+    rpc OpenPDScheduling(OpenPDSchedulingRequest) returns (OpenPDSchedulingResponse);
+    
+    rpc ClosePDScheduling(ClosePDSchedulingRequest) returns (ClosePDSchedulingResponse);
+};
