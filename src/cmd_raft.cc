@@ -108,24 +108,64 @@ void RaftNodeCmd::DoCmdRemove(PClient* client) {
       return;
     }
 
-    // Connect target
-    std::string peer_ip = butil::ip2str(leader_peer_id.addr.ip).c_str();
-    auto port = leader_peer_id.addr.port - pikiwidb::g_config.raft_port_offset;
-    auto peer_id = client->argv_[2];
-    auto ret =
-        praft_->GetClusterCmdCtx().Set(ClusterCmdType::kRemove, client, std::move(peer_ip), port, std::move(peer_id));
-    if (!ret) {  // other clients have removed
-      return client->SetRes(CmdRes::kErrOther, "Other clients have removed");
-    }
-    praft_->GetClusterCmdCtx().ConnectTargetNode();
-    INFO("Sent remove request to leader successfully");
+    brpc::ChannelOptions options;
+    options.connection_type = brpc::CONNECTION_TYPE_SINGLE;
+    options.max_retry = 0;
+    options.connect_timeout_ms = kChannelTimeoutMS;
 
-    // Not reply any message here, we will reply after the connection is established.
-    client->Clear();
+    NodeRemoveRequest request;
+    NodeRemoveResponse response;
+
+    request.set_group_id(praft_->GetGroupID());
+    request.set_endpoint(client->argv_[2]);
+    request.set_index(client->GetCurrentDB());
+    request.set_role(0);
+
+    auto endpoint = leader_peer_id.addr;
+    int retry_count = 0;
+    do {
+      brpc::Channel remove_node_channel;
+      if (0 != remove_node_channel.Init(endpoint, &options)) {
+        ERROR("Fail to init remove_node_channel to praft service!");
+        client->SetRes(CmdRes::kErrOther, "Fail to init remove_node_channel.");
+        return;
+      }
+
+      brpc::Controller cntl;
+      PRaftService_Stub stub(&remove_node_channel);
+      stub.RemoveNode(&cntl, &request, &response, NULL);
+
+      if (cntl.Failed()) {
+        ERROR("Fail to send remove node rpc to target server {}", butil::endpoint2str(endpoint).c_str());
+        client->SetRes(CmdRes::kErrOther, "Failed to send remove node rpc");
+        return;
+      }
+
+      if (response.success()) {
+        client->SetRes(CmdRes::kOK, "Remove Node Success");
+        return;
+      }
+
+      switch (response.error_code()) {
+        case PRaftErrorCode::kErrorReDirect: {
+          butil::str2endpoint(response.leader_endpoint().c_str(), &endpoint);
+          endpoint.port += g_config.raft_port_offset;
+          break;
+        }
+        default: {
+          ERROR("Remove node request return false");
+          client->SetRes(CmdRes::kErrOther, "Failed to Remove Node");
+          return;
+        }
+      }
+    } while (!response.success() && ++retry_count <= 3);
+
+    ERROR("Remove node request return false");
+    client->SetRes(CmdRes::kErrOther, "Failed to Remove Node");
     return;
   }
 
-  auto s = praft_->RemovePeer(client->argv_[2]);
+  auto s = praft_->RemovePeer(client->argv_[2], client->GetCurrentDB());
   if (s.ok()) {
     client->SetRes(CmdRes::kOK);
   } else {
