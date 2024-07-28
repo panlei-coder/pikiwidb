@@ -49,6 +49,13 @@ struct TaskContext {
 
 using TasksVector = std::vector<TaskContext>;
 
+enum PRaftErrorCode {
+  kErrorDisMatch = 0,
+  kErrorAddNode,
+  kErrorRemoveNode,
+  kErrorReDirect,
+};
+
 class PStore {
  public:
   static PStore& Instance();
