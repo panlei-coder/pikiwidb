@@ -158,11 +158,11 @@ bool SCardCmd::DoInitial(PClient* client) {
 void SCardCmd::DoCmd(PClient* client) {
   int32_t reply_Num = 0;
   storage::Status s = PSTORE.GetBackend(client->GetCurrentDB())->GetStorage()->SCard(client->Key(), &reply_Num);
-  if (!s.ok()) {
-    client->SetRes(CmdRes::kSyntaxErr, "scard cmd error");
+  if (s.ok() || s.IsNotFound()) {
+    client->AppendInteger(reply_Num);
     return;
   }
-  client->AppendInteger(reply_Num);
+  client->SetRes(CmdRes::kSyntaxErr, "scard cmd error");
 }
 
 SMoveCmd::SMoveCmd(const std::string& name, int16_t arity)
