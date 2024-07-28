@@ -9,13 +9,15 @@
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 
-#include <map>
+#include <atomic>
 #include <shared_mutex>
-#include <vector>
+#include <unordered_map>
 
 #include "common.h"
 #include "db.h"
+#include "pstd/pstd_status.h"
 #include "storage/storage.h"
+#include "store_service.h"
 
 namespace pikiwidb {
 
@@ -47,18 +49,31 @@ class PStore {
   void operator=(const PStore&) = delete;
   ~PStore();
 
-  void Init(int db_number);
+  void Init();
+  bool InitRpcServer();
+  bool RegisterStoreToPDServer();
 
-  std::unique_ptr<DB>& GetBackend(int32_t index) { return backends_[index]; };
+  void SetStoreID(int64_t store_id) { store_id_.store(store_id, std::memory_order_relaxed); }
+
+  int64_t GetStoreID() { return store_id_.load(std::memory_order_relaxed); }
+
+  std::shared_ptr<DB> GetBackend(int64_t db_id);
+
+  pstd::Status AddBackend(int64_t db_id, std::string&& group_id);
 
   void HandleTaskSpecificDB(const TasksVector& tasks);
 
-  int GetDBNumber() const { return db_number_; }
-
  private:
   PStore() = default;
-  int db_number_ = 0;
-  std::vector<std::unique_ptr<DB>> backends_;
+
+  std::atomic<int64_t> store_id_ = {0};
+
+  std::unique_ptr<brpc::Server> rpc_server_;
+
+  std::shared_mutex store_mutex_;
+  std::unordered_map<int64_t, std::shared_ptr<DB>> backends_table_;  // <db_id, db> / <region_id, region_engine>
+
+  std::atomic<int64_t> is_started_ = {false};
 };
 
 #define PSTORE PStore::Instance()

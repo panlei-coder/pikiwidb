@@ -102,7 +102,7 @@ class PRaft : public braft::StateMachine {
   //===--------------------------------------------------------------------===//
   // Braft API
   //===--------------------------------------------------------------------===//
-  butil::Status Init(std::string& group_id, bool initial_conf_is_null);
+  butil::Status Init(std::string&& group_id, bool initial_conf_is_null);
   butil::Status AddPeer(const std::string& peer);
   butil::Status RemovePeer(const std::string& peer);
   butil::Status DoSnapshot(int64_t self_snapshot_index = 0, bool is_sync = true);
@@ -141,7 +141,7 @@ class PRaft : public braft::StateMachine {
   storage::LogIndex GetTerm(uint64_t log_index);
   storage::LogIndex GetLastLogIndex(bool is_flush = false);
 
-  bool IsInitialized() const { return node_ != nullptr && server_ != nullptr; }
+  bool IsInitialized() const { return node_ != nullptr; }
 
  private:
   void on_apply(braft::Iterator& iter) override;
@@ -158,7 +158,7 @@ class PRaft : public braft::StateMachine {
   void on_start_following(const ::braft::LeaderChangeContext& ctx) override;
 
  private:
-  std::unique_ptr<brpc::Server> server_{nullptr};  // brpc
+  // std::unique_ptr<brpc::Server> server_{nullptr};  // brpc
   std::unique_ptr<braft::Node> node_{nullptr};
   braft::NodeOptions node_options_;  // options for raft node
   std::string raw_addr_;             // ip:port of this node
@@ -166,7 +166,7 @@ class PRaft : public braft::StateMachine {
   scoped_refptr<braft::FileSystemAdaptor> snapshot_adaptor_ = nullptr;
   ClusterCmdContext cluster_cmd_ctx_;  // context for cluster join/remove command
   std::string group_id_;               // group id
-  int db_id_ = 0;                      // db_id
+  int64_t db_id_ = 0;                      // db_id
 
   bool is_node_first_start_up_ = true;
 };

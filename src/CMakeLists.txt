@@ -3,6 +3,18 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
+ADD_CUSTOM_COMMAND(
+  OUTPUT "${PROTO_OUTPUT_DIR}/store.pb.cc"
+  DEPENDS protobuf
+  COMMAND ${PROTOBUF_PROTOC}
+  ARGS -I ${CMAKE_CURRENT_SOURCE_DIR}
+    --cpp_out ${PROTO_OUTPUT_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/store.proto
+)
+ADD_LIBRARY(store_pb STATIC "${PROTO_OUTPUT_DIR}/store.pb.cc")
+SET(LIBRARY_OUTPUT_PATH ${PLIB_INSTALL_DIR})
+TARGET_INCLUDE_DIRECTORIES(store_pb PRIVATE ${PROTOBUF_INCLUDE_DIR})
+
 AUX_SOURCE_DIRECTORY(. PIKIWIDB_SRC)
 
 ADD_EXECUTABLE(pikiwidb ${PIKIWIDB_SRC})
@@ -30,6 +42,8 @@ TARGET_INCLUDE_DIRECTORIES(pikiwidb
         PRIVATE ${BRAFT_INCLUDE_DIR}
         PRIVATE ${BRPC_INCLUDE_DIR}
         PRIVATE ${LIBEVENT_INCLUDE_DIRS}
+        PRIVATE ${PROTO_OUTPUT_DIR}
+        PRIVATE ${PROTO_OUTPUT_DIR}/pd
 )
 
 ADD_DEPENDENCIES(pikiwidb
@@ -44,6 +58,7 @@ ADD_DEPENDENCIES(pikiwidb
         braft
         brpc
         storage
+        store_pb
 )
 
 TARGET_LINK_LIBRARIES(pikiwidb
@@ -69,6 +84,8 @@ TARGET_LINK_LIBRARIES(pikiwidb
         praft
         praft_pb
         binlog_pb
+        pd_pb
+        store_pb
         "${LIB}"
 )
 

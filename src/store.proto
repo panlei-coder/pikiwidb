@@ -1,0 +1,129 @@
+syntax="proto3";
+package pikiwidb;
+option cc_generic_services = true;
+
+message StoreStatsRequest {
+  bool only_heartbeat = 1;
+};
+
+message StoreStatsResponse {
+  bool success = 1;
+  optional StoreStats store_stats = 2;
+};
+
+message StoreStats {
+  int64 store_id = 1; // store ID 
+  optional int64 capacity = 2; // store storage capacity
+  optional int64 available = 3; // store Remaining available size
+  optional int32 region_count = 4; // number of regions
+  optional int32 leader_region_count = 5; // number of leader
+  optional int32 sending_snap_count = 6; // number of snapshots sent currently
+  optional int32 receiving_snap_count = 7; // number of snapshots recvd currently
+  optional int32 applying_snap_count = 8; // number of regions where snapshots are being applied
+  optional int64 start_time = 9; // store startup time (Unix timestamp, milliseconds)
+  optional bool busy = 10; // whether store is busy
+  optional int64 bytes_written = 11; // number of bytes written to the store during the current period
+  optional int64 bytes_read = 12; // number of bytes read for the store during the period
+  optional int64 keys_written = 13; // number of keys written to the store in the current period
+  optional int64 keys_read = 14; // indicates the number of keys read from the store in the current period
+}
+
+// only send to leader
+message RegionStatsRequest {
+  bool only_heartbeat = 1;
+};
+
+
+message RegionStatsResponse {
+  bool success = 1;
+  optional RegionStats region_stats = 2;
+}
+
+message RegionStats {
+  int64 region_id = 1; // region ID
+  optional Peer leader = 2; // leader
+  optional DownPeers down_peers = 3; // leader considers that these peers are offline
+  optional PendingPeers pending_peers = 4; // leader Indicates the peer that cannot determine whether it is working properly
+  optional int64 bytes_written = 5; // number of bytes written to the region during the current period
+  optional int64 bytes_read = 6; // number of bytes read for the region during the period
+  optional int64 keys_written = 7; // number of keys written to the region in the current period
+  optional int64 keys_read = 8; // number of keys written to the region in the current period
+  optional int64 approximate_size = 9; // approximate area size
+  optional int64 approximate_keys = 10; // approximate key number
+};
+
+message DownPeers {
+  repeated Peer down_peers = 1;
+}
+
+message PendingPeers {
+  repeated Peer pending_peer = 1;
+}
+
+message Peer {
+  int64 peer_id = 1;
+  int64 store_id = 2;
+  string ip = 3;
+  int32 port = 4;
+};
+
+message RegionOptions {
+  int64 region_id = 1;
+  optional string start_key = 2;
+  optional string end_key = 3;
+  string raft_group_id = 4;
+};
+
+message InitRegionPeerRequest {
+  RegionOptions region_options = 1;
+};
+
+message InitRegionPeerResponse {
+  bool success = 1;
+  optional int64 peer_id = 2;
+};
+
+message AddRegionPeerRequest {
+  int64 region_id = 1;
+  Peer peer = 2;
+};
+
+message AddRegionResponse {
+  bool success = 1;
+  optional Peer old_peers = 2;
+  optional Peer new_peers = 3;
+};
+
+message RemoveRegionPeerRequest {
+  int64 region_id = 1;
+  Peer peer = 2;
+};
+
+message RemoveRegionPeerResponse {
+  bool success = 1;
+  optional Peer old_peers = 2;
+  optional Peer new_peers = 3;
+};
+
+message TransferLeaderRequest {
+  int64 region_id = 1;
+  Peer peer = 2;
+};
+
+message TransferLeaderResponse {
+  bool success = 1;
+};
+
+service StoreService {
+  rpc GetStoreStats(StoreStatsRequest) returns (StoreStatsResponse);
+    
+  rpc GetRegionStats(RegionStatsRequest) returns (RegionStatsResponse); 
+    
+  rpc InitRegionPeer(InitRegionPeerRequest) returns (InitRegionPeerResponse); 
+    
+  rpc AddRegionPeer(AddRegionPeerRequest) returns (AddRegionResponse); 
+    
+  rpc RemoveRegionPeer(RemoveRegionPeerRequest) returns (RemoveRegionPeerResponse); 
+    
+  rpc TransferLeader(TransferLeaderRequest) returns (TransferLeaderResponse); 
+};

@@ -7,11 +7,22 @@
 
 #include "store.h"
 
+#include <chrono>
 #include <memory>
 #include <string>
+#include <thread>
+
+#include "braft/raft.h"
+#include "braft/route_table.h"
+#include "braft/util.h"
+#include "brpc/channel.h"
+#include "brpc/controller.h"
 
 #include "config.h"
 #include "db.h"
+#include "pd.pb.h"
+#include "pd/pd_service.h"
+#include "praft/praft_service.h"
 #include "pstd/log.h"
 #include "pstd/pstd_string.h"
 
@@ -24,25 +35,190 @@ PStore& PStore::Instance() {
   return store;
 }
 
-void PStore::Init(int db_number) {
-  db_number_ = db_number;
-  backends_.reserve(db_number_);
-  for (int i = 0; i < db_number_; i++) {
-    auto db = std::make_unique<DB>(i, g_config.db_path);
-    db->Open();
-    backends_.push_back(std::move(db));
-    INFO("Open DB_{} success!", i);
+void PStore::Init() {
+  // 1. init rpc
+  if (!InitRpcServer()) {
+    ERROR("STORE Init failed!");
+    return;
   }
+
+  // 2. Currently, only pd independent deployment is supported if the current node is not a pd node,
+  // the current node needs to report to the pd node that it is online as a common node.
+  if (!RegisterStoreToPDServer()) {
+    ERROR("STORE Init failed!");
+    return;
+  }
+
   INFO("STORE Init success!");
+}
+
+bool PStore::InitRpcServer() {
+  rpc_server_ = std::make_unique<brpc::Server>();
+  auto port = g_config.port.load(std::memory_order_relaxed) +
+              pikiwidb::g_config.raft_port_offset.load(std::memory_order_relaxed);
+
+  // Add your service into RPC server
+  DummyServiceImpl dummy_service(&PRAFT);
+  if (rpc_server_->AddService(&dummy_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+    rpc_server_.reset();
+    ERROR("Failed to add service");
+    return false;
+  }
+
+  // Add PDService if the node as the pd
+  if (g_config.as_pd.load(std::memory_order_relaxed)) {
+    PlacementDriverServer& pd_server = PlacementDriverServer::Instance();
+    PlacementDriverOptions pd_options(g_config.fake.load(std::memory_order_relaxed),
+                                      std::move(g_config.pd_group_id.ToString()),
+                                      std::move(g_config.pd_conf.ToString()));
+    pd_server.Init(pd_options);
+    pd_server.Start();
+
+    PlacementDriverServiceImpl pd_service;
+    if (rpc_server_->AddService(&pd_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+      rpc_server_.reset();
+      ERROR("Failed to add service");
+      return false;
+    }
+  }
+
+  // Add StoreService if the node is deployed in mixed mode or is not currently used as a pd node
+  if (!g_config.as_pd.load(std::memory_order_relaxed) || g_config.fake.load(std::memory_order_relaxed)) {
+    StoreServiceImpl store_service;
+    if (rpc_server_->AddService(&store_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+      rpc_server_.reset();
+      ERROR("Failed to add service");
+      return false;
+    }
+  }
+
+  // raft can share the same RPC server. Notice the second parameter, because
+  // adding services into a running server is not allowed and the listen
+  // address of this server is impossible to get before the server starts. You
+  // have to specify the address of the server.
+  if (braft::add_service(rpc_server_.get(), port) != 0) {
+    rpc_server_.reset();
+    ERROR("Failed to add raft service");
+    return false;
+  }
+
+  // It's recommended to start the server before Counter is started to avoid
+  // the case that it becomes the leader while the service is unreacheable by
+  // clients.
+  // Notice the default options of server is used here. Check out details from
+  // the doc of brpc if you would like change some option;
+  if (rpc_server_->Start(port, nullptr) != 0) {
+    rpc_server_.reset();
+    ERROR("Failed to start server");
+    return false;
+  }
+
+  return true;
+}
+
+bool PStore::RegisterStoreToPDServer() {
+  if (!g_config.as_pd.load(std::memory_order_relaxed)) {
+    // Register configuration of target group to RouteTable
+    if (braft::rtb::update_configuration(g_config.pd_group_id.ToString(), g_config.pd_conf.ToString()) != 0) {
+      ERROR("Fail to register configuration {} of group {}", g_config.pd_conf.ToString(),
+            g_config.pd_group_id.ToString());
+      return false;
+    }
+
+    int retry_times = std::count_if(g_config.pd_conf.ToString().begin(), g_config.pd_conf.ToString().end(),
+                                    [](char& c) { return c == ','; });
+    for (int i = 0; i < retry_times; i++) {
+      braft::PeerId leader;
+      // select leader of the target group from RouteTable
+      if (braft::rtb::select_leader(g_config.pd_group_id, &leader) != 0) {
+        // leader is unknow in RouteTable. Ask RouteTable to refresh leader by sending RPCs.
+        butil::Status st = braft::rtb::refresh_leader(g_config.pd_group_id, g_config.request_timeout_ms);
+        if (!st.ok()) {
+          // not sure about the leader, sleep for a while and the ask again.
+          WARN("Fail to refresh_leader : {}", st.error_str());
+          std::chrono::milliseconds duration(g_config.request_timeout_ms);
+          std::this_thread::sleep_for(duration);
+        }
+        continue;
+      }
+
+      // Now we know who is the leader, construct Stub and then sending
+      // rpc
+      brpc::Channel channel;
+      if (channel.Init(leader.addr, NULL) != 0) {
+        WARN("Fail to init channel to {}", leader.to_string());
+        std::chrono::milliseconds duration(g_config.request_timeout_ms);
+        std::this_thread::sleep_for(duration);
+        continue;
+      }
+      PlacementDriverService_Stub stub(&channel);
+
+      brpc::Controller cntl;
+      cntl.set_timeout_ms(g_config.request_timeout_ms);
+      AddStoreResponse response;
+      AddStoreRequest request;
+      request.set_ip(g_config.ip.ToString());
+      request.set_port(g_config.port.load(std::memory_order_relaxed));
+      stub.AddStore(&cntl, &request, &response, NULL);
+
+      if (cntl.Failed()) {
+        WARN("Fail to send request to {} : {}", leader.to_string(), cntl.ErrorText());
+        // clear leadership since this RPC failed.
+        braft::rtb::update_leader(g_config.pd_group_id.ToString(), braft::PeerId());
+        std::chrono::milliseconds duration(g_config.request_timeout_ms);
+        std::this_thread::sleep_for(duration);
+        continue;
+      }
+
+      if (!response.success()) {
+        WARN("Fail to send request to {}, redirecting to {}", leader.to_string(),
+             response.has_redirect() ? response.redirect() : "nowhere");
+        // update route table since we have redirect information
+        braft::rtb::update_leader(g_config.pd_group_id.ToString(), response.redirect());
+        std::chrono::milliseconds duration(g_config.request_timeout_ms);
+        std::this_thread::sleep_for(duration);
+        continue;
+      }
+
+      SetStoreID(response.store_id());
+      return true;
+    }
+
+    return false;
+  }
+
+  return true;
+}
+
+std::shared_ptr<DB> PStore::GetBackend(int64_t db_id) {
+  std::shared_lock lock(store_mutex_);
+  auto it = backends_table_.find(db_id);
+  if (it != backends_table_.end()) {
+    return it->second;
+  }
+
+  return nullptr;
+}
+
+pstd::Status PStore::AddBackend(int64_t db_id, std::string&& group_id) {
+  std::lock_guard<std::shared_mutex> lock(store_mutex_);
+  auto it = backends_table_.find(db_id);
+  if (it != backends_table_.end()) {
+    return pstd::Status::OK();
+  }
+
+  backends_table_.insert({db_id, std::make_shared<DB>(db_id, g_config.db_path)});
+  return backends_table_[db_id]->Init(std::move(group_id));
 }
 
 void PStore::HandleTaskSpecificDB(const TasksVector& tasks) {
   std::for_each(tasks.begin(), tasks.end(), [this](const auto& task) {
-    if (task.db < 0 || task.db >= db_number_) {
-      WARN("The database index is out of range.");
+    auto db = GetBackend(task.db);
+    if (db == nullptr) {
+      WARN("The database of db_id is not exit.");
       return;
     }
-    auto& db = backends_.at(task.db);
+
     switch (task.type) {
       case kCheckpoint: {
         if (auto s = task.args.find(kCheckpointPath); s == task.args.end()) {
@@ -73,4 +249,5 @@ void PStore::HandleTaskSpecificDB(const TasksVector& tasks) {
     }
   });
 }
+
 }  // namespace pikiwidb

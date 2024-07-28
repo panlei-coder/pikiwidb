@@ -2,23 +2,26 @@ syntax="proto3";
 package pikiwidb;
 option cc_generic_services = true;
 
+import "store.proto";
+
 message GetClusterInfoRequest {
 };
 
 message GetClusterInfoResponse {
-  repeated Store store = 1;
+  bool success = 1;
+  repeated Store store = 2;
 };
 
 message Store {
-  required int64 store_id = 1;
-  required string ip = 2;
-  required int32 port = 3;
-  required StoreState state = 4;
+  int64 store_id = 1;
+  string ip = 2;
+  int32 port = 3;
+  StoreState state = 4;
   repeated Region region = 5;
 };
 
 message Region {
-  required int64 region_id = 1;
+  int64 region_id = 1;
   optional string start_key = 2;
   optional string end_key = 3;
   repeated RegionEpoch region_epoch = 4;
@@ -26,8 +29,8 @@ message Region {
 };
 
 message RegionEpoch {
-  required int64 conf_change_ver = 1; // conf change version
-  required int64 region_ver = 2; // region version (split or merge)
+  int64 conf_change_ver = 1; // conf change version
+  int64 region_ver = 2; // region version (split or merge)
 };
 
 enum StoreState {
@@ -37,62 +40,67 @@ enum StoreState {
 };
 
 message CreateAllRegionsRequest {
-  required int64 regions_count = 1;
-  required int32 region_peers_count = 2;
+  int64 regions_count = 1;
+  int32 region_peers_count = 2;
   repeated RegionOptions regionOptions = 3;
 };
 
 message CreateAllRegionsResponse {
+  bool success = 1;
 };
 
 message DeleteAllRegionsRequest {
 };
 
 message DeleteAllRegionsResponse {
+  bool success = 1;
 };
 
 message AddStoreRequest {
-  required string ip = 1;
-  required int32 port = 2;
+  string ip = 1;
+  int32 port = 2;
 };
 
 message AddStoreResponse {
-  required int64 store_id = 1;
+  bool success = 1;
+  optional int64 store_id = 2;
+  optional string redirect = 3;
 };
 
 message RemoveStoreRequest {
-  required int64 store_id = 1;
+  int64 store_id = 1;
 };
 
-message AddStoreResponse {
+message RemoveStoreResponse {
+  bool success = 1;
 };
 
 message OpenPDSchedulingRequest {
 };
 
 message OpenPDSchedulingResponse {
-  required bool is_open = 1;
+  bool success = 1;
 };
 
 message ClosePDSchedulingRequest {
 };
 
 message ClosePDSchedulingResponse {
-  required bool is_close = 1;
+  bool success = 1;
 };
 
-service PDService {
-    rpc CreateAllRegions(CreateAllRegionsRequest) returns (CreateAllRegionsResponse);
+service PlacementDriverService {
+  rpc CreateAllRegions(CreateAllRegionsRequest) returns (CreateAllRegionsResponse);
 
-    rpc DeleteAllRegions(DeleteAllRegionsRequest) returns (DeleteAllRegionsResponse);
+  rpc DeleteAllRegions(DeleteAllRegionsRequest) returns (DeleteAllRegionsResponse);
 
-    rpc AddStore(AddStoreRequest) returns (AddStoreResponse);
+  rpc AddStore(AddStoreRequest) returns (AddStoreResponse);
 
-    rpc RemoveStore(RemoveStoreRequest) returns (RemoveStoreResponse);
+  rpc RemoveStore(RemoveStoreRequest) returns (RemoveStoreResponse);
 
-    rpc GetClusterInfo(GetClusterInfoRequest) returns (GetClusterInfoResponse);
+  rpc GetClusterInfo(GetClusterInfoRequest) returns (GetClusterInfoResponse);
 
-    rpc OpenPDScheduling(OpenPDSchedulingRequest) returns (OpenPDSchedulingResponse);
+  rpc OpenPDScheduling(OpenPDSchedulingRequest) returns (OpenPDSchedulingResponse);
     
-    rpc ClosePDScheduling(ClosePDSchedulingRequest) returns (ClosePDSchedulingResponse);
+  rpc ClosePDScheduling(ClosePDSchedulingRequest) returns (ClosePDSchedulingResponse);
 };

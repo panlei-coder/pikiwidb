@@ -282,7 +282,7 @@ int main(int ac, char* av[]) {
     daemonize();
   }
 
-  InitLimit();
+  // InitLimit();
   pstd::InitRandom();
   SignalSetup();
   InitLogs();

@@ -174,6 +174,13 @@ class PConfig {
   std::atomic_uint64_t rocksdb_ttl_second = 604800;       // default 86400 * 7
   std::atomic_uint64_t rocksdb_periodic_second = 259200;  // default 86400 * 3
 
+  // PD
+  std::atomic_bool as_pd = false;
+  std::atomic_bool fake = false;
+  AtomicString pd_group_id;
+  AtomicString pd_conf;
+  std::atomic_int request_timeout_ms = 1000;
+
   rocksdb::Options GetRocksDBOptions();
 
   rocksdb::BlockBasedTableOptions GetRocksDBBlockBasedTableOptions();

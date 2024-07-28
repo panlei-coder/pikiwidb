@@ -84,13 +84,13 @@ PRaft& PRaft::Instance() {
   return store;
 }
 
-butil::Status PRaft::Init(std::string& group_id, bool initial_conf_is_null) {
-  if (node_ && server_) {
+butil::Status PRaft::Init(std::string&& group_id, bool initial_conf_is_null) {
+  if (node_) {
     return {0, "OK"};
   }
 
+  /*
   server_ = std::make_unique<brpc::Server>();
-  auto port = g_config.port + pikiwidb::g_config.raft_port_offset;
   // Add your service into RPC server
   DummyServiceImpl service(&PRAFT);
   if (server_->AddService(&service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
@@ -115,16 +115,19 @@ butil::Status PRaft::Init(std::string& group_id, bool initial_conf_is_null) {
     server_.reset();
     return ERROR_LOG_AND_STATUS("Failed to start server");
   }
+  */
+
   // It's ok to start PRaft;
   assert(group_id.size() == RAFT_GROUPID_LEN);
-  this->group_id_ = group_id;
+  this->group_id_ = std::move(group_id);
 
   // FIXME: g_config.ip is default to 127.0.0.0, which may not work in cluster.
+  auto port = g_config.port + pikiwidb::g_config.raft_port_offset;
   raw_addr_ = g_config.ip.ToString() + ":" + std::to_string(port);
   butil::ip_t ip;
   auto ret = butil::str2ip(g_config.ip.ToString().c_str(), &ip);
   if (ret != 0) {
-    server_.reset();
+    // server_.reset();
     return ERROR_LOG_AND_STATUS("Failed to convert str_ip to butil::ip_t");
   }
   butil::EndPoint addr(ip, port);
@@ -142,7 +145,7 @@ butil::Status PRaft::Init(std::string& group_id, bool initial_conf_is_null) {
     initial_conf = raw_addr_ + ":0,";
   }
   if (node_options_.initial_conf.parse_from(initial_conf) != 0) {
-    server_.reset();
+    // server_.reset();
     return ERROR_LOG_AND_STATUS("Failed to parse configuration");
   }
 
@@ -160,7 +163,7 @@ butil::Status PRaft::Init(std::string& group_id, bool initial_conf_is_null) {
 
   node_ = std::make_unique<braft::Node>("pikiwidb", braft::PeerId(addr));  // group_id
   if (node_->init(node_options_) != 0) {
-    server_.reset();
+    // server_.reset();
     node_.reset();
     return ERROR_LOG_AND_STATUS("Failed to init raft node");
   }
@@ -570,9 +573,9 @@ void PRaft::ShutDown() {
     node_->shutdown(nullptr);
   }
 
-  if (server_) {
-    server_->Stop(0);
-  }
+  // if (server_) {
+  //   server_->Stop(0);
+  // }
 }
 
 // Blocking this thread until the node is eventually down.
@@ -581,9 +584,9 @@ void PRaft::Join() {
     node_->join();
   }
 
-  if (server_) {
-    server_->Join();
-  }
+  // if (server_) {
+  //   server_->Join();
+  // }
 }
 
 void PRaft::AppendLog(const Binlog& log, std::promise<rocksdb::Status>&& promise) {
@@ -610,9 +613,9 @@ void PRaft::Clear() {
     node_.reset();
   }
 
-  if (server_) {
-    server_.reset();
-  }
+  // if (server_) {
+  //   server_.reset();
+  // }
 }
 
 void PRaft::on_apply(braft::Iterator& iter) {

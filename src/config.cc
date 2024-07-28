@@ -138,6 +138,13 @@ PConfig::PConfig() {
   AddNumber("rocksdb-level0-slowdown-writes-trigger", false, &rocksdb_level0_slowdown_writes_trigger);
   AddNumber("rocksdb-level0-stop-writes-trigger", false, &rocksdb_level0_stop_writes_trigger);
   AddNumber("rocksdb-level0-slowdown-writes-trigger", false, &rocksdb_level0_slowdown_writes_trigger);
+
+  // pd config
+  AddBool("as-pd", &CheckYesNo, false, &as_pd);
+  AddBool("pd-fake", &CheckYesNo, false, &fake);
+  AddString("pd-group-id", false, {&pd_group_id});
+  AddString("pd-conf", false, {&pd_conf});
+  AddNumber("request-timeout-ms", false, &request_timeout_ms);
 }
 
 bool PConfig::LoadFromFile(const std::string& file_name) {
