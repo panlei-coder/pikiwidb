@@ -80,8 +80,8 @@ void ClusterCmdContext::ConnectTargetNode() {
 }
 
 PRaft& PRaft::Instance() {
-  static PRaft store;
-  return store;
+  static PRaft praft;
+  return praft;
 }
 
 butil::Status PRaft::Init(std::string&& group_id, bool initial_conf_is_null) {
@@ -161,7 +161,7 @@ butil::Status PRaft::Init(std::string&& group_id, bool initial_conf_is_null) {
   snapshot_adaptor_ = new PPosixFileSystemAdaptor();
   node_options_.snapshot_file_system_adaptor = &snapshot_adaptor_;
 
-  node_ = std::make_unique<braft::Node>("pikiwidb", braft::PeerId(addr));  // group_id
+  node_ = std::make_unique<braft::Node>("PikiwiDB", braft::PeerId(addr));  // group_id
   if (node_->init(node_options_) != 0) {
     // server_.reset();
     node_.reset();
@@ -413,7 +413,7 @@ void PRaft::InitializeNodeBeforeAdd(PClient* client, PClient* join_client, const
   if (group_id_end != std::string::npos) {
     std::string raft_group_id = reply.substr(group_id_start, group_id_end - group_id_start);
     // initialize the slave node
-    auto s = PRAFT.Init(raft_group_id, true);
+    auto s = PRAFT.Init(std::move(raft_group_id), true);
     if (!s.ok()) {
       join_client->SetRes(CmdRes::kErrOther, s.error_str());
       join_client->SendPacket(join_client->Message());

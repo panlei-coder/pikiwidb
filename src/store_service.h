@@ -14,29 +14,25 @@ namespace pikiwidb {
 class StoreServiceImpl : public StoreService {
  public:
   StoreServiceImpl() = default;
-  ~StoreServiceImpl() = default;
 
-  void GetStoreStats(::PROTOBUF_NAMESPACE_ID::RpcController* controller, const ::pikiwidb::StoreStatsRequest* request,
+  void GetStoreStats(::google::protobuf::RpcController* controller, const ::pikiwidb::StoreStatsRequest* request,
                      ::pikiwidb::StoreStatsResponse* response, ::google::protobuf::Closure* done) override;
 
-  void GetRegionStats(::PROTOBUF_NAMESPACE_ID::RpcController* controller, const ::pikiwidb::RegionStatsRequest* request,
+  void GetRegionStats(::google::protobuf::RpcController* controller, const ::pikiwidb::RegionStatsRequest* request,
                       ::pikiwidb::RegionStatsResponse* response, ::google::protobuf::Closure* done) override;
 
-  void InitRegionPeer(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                      const ::pikiwidb::InitRegionPeerRequest* request, ::pikiwidb::InitRegionPeerResponse* response,
-                      ::google::protobuf::Closure* done) override;
+  void InitRegionPeer(::google::protobuf::RpcController* controller, const ::pikiwidb::InitRegionPeerRequest* request,
+                      ::pikiwidb::InitRegionPeerResponse* response, ::google::protobuf::Closure* done) override;
 
-  void AddRegionPeer(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                     const ::pikiwidb::AddRegionPeerRequest* request, ::pikiwidb::AddRegionResponse* response,
-                     ::google::protobuf::Closure* done) override;
+  void AddRegionPeer(::google::protobuf::RpcController* controller, const ::pikiwidb::AddRegionPeerRequest* request,
+                     ::pikiwidb::AddRegionResponse* response, ::google::protobuf::Closure* done) override;
 
-  void RemoveRegionPeer(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+  void RemoveRegionPeer(::google::protobuf::RpcController* controller,
                         const ::pikiwidb::RemoveRegionPeerRequest* request,
                         ::pikiwidb::RemoveRegionPeerResponse* response, ::google::protobuf::Closure* done) override;
 
-  void TransferLeader(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                      const ::pikiwidb::TransferLeaderRequest* request, ::pikiwidb::TransferLeaderResponse* response,
-                      ::google::protobuf::Closure* done) override;
+  void TransferLeader(::google::protobuf::RpcController* controller, const ::pikiwidb::TransferLeaderRequest* request,
+                      ::pikiwidb::TransferLeaderResponse* response, ::google::protobuf::Closure* done) override;
 };
 
 }  // namespace pikiwidb

@@ -7,10 +7,13 @@
 
 #include "pd_server.h"
 
+#include "common.h"
 #include "praft/praft.h"
 #include "pstd/log.h"
+#include "pstd/pstd_status.h"
 #include "pstd/pstd_string.h"
 #include "store.h"
+#include "store.pb.h"
 
 namespace pikiwidb {
 
@@ -41,6 +44,8 @@ pstd::Status PlacementDriverServer::Init(PlacementDriverOptions& pd_options) {
     // Later consider supporting pd group initialization using pd's configuration file
     WARN("Later consider supporting pd group initialization using pd's configuration file");
   }
+
+  return pstd::Status::OK();
 }
 
 void PlacementDriverServer::Start() {
@@ -63,7 +68,8 @@ void PlacementDriverServer::Stop() {
 std::tuple<bool, int64_t> PlacementDriverServer::GenerateStoreID() {
   auto db = PSTORE.GetBackend(db_id_);
   // Ensures atomicity when both read and write operations are performed
-  PDBackendLock pd_backend_lock(db);
+  db->Lock();
+  DEFER { db->UnLock(); };
 
   int64_t max_store_id = 0;
   std::string max_store_id_str;
@@ -76,14 +82,14 @@ std::tuple<bool, int64_t> PlacementDriverServer::GenerateStoreID() {
 
     max_store_id += 1;
     status = db->GetStorage()->Set(PD_MAX_STORE_ID, pstd::Int2string(max_store_id));
-    if (status.ok()) {
+    if (!status.ok()) {
       ERROR("Fail to write the max store id");
       return {false, -1};
     }
   } else if (status.IsNotFound()) {
     // Note If pd is created for the first time without any store, the initial value of max_store_id is 0.
-    status = db->GetStorage()->Set(PD_MAX_STORE_ID, max_store_id);
-    if (status.ok()) {
+    status = db->GetStorage()->Set(PD_MAX_STORE_ID, pstd::Int2string(max_store_id));
+    if (!status.ok()) {
       ERROR("Fail to write the max store id");
       return {false, -1};
     }
@@ -97,7 +103,8 @@ std::tuple<bool, int64_t> PlacementDriverServer::GenerateStoreID() {
 std::tuple<bool, int64_t> PlacementDriverServer::GenerateRegionID() {
   auto db = PSTORE.GetBackend(db_id_);
   // Ensures atomicity when both read and write operations are performed
-  PDBackendLock pd_backend_lock(db);
+  db->Lock();
+  DEFER { db->UnLock(); };
 
   int64_t max_region_id = 0;
   std::string max_region_id_str;
@@ -110,14 +117,14 @@ std::tuple<bool, int64_t> PlacementDriverServer::GenerateRegionID() {
 
     max_region_id += 1;
     status = db->GetStorage()->Set(PD_MAX_REGION_ID, pstd::Int2string(max_region_id));
-    if (status.ok()) {
+    if (!status.ok()) {
       ERROR("Fail to write the max region id");
       return {false, -1};
     }
   } else if (status.IsNotFound()) {
     // Note If pd is created for the first time without any store, the initial value of max_store_id is 0.
-    status = db->GetStorage()->Set(PD_MAX_REGION_ID, max_region_id);
-    if (status.ok()) {
+    status = db->GetStorage()->Set(PD_MAX_REGION_ID, pstd::Int2string(max_region_id));
+    if (!status.ok()) {
       ERROR("Fail to write the max region id");
       return {false, -1};
     }
@@ -130,7 +137,8 @@ std::tuple<bool, int64_t> PlacementDriverServer::GenerateRegionID() {
 
 std::tuple<bool, int64_t> PlacementDriverServer::CheckStoreExistByIP(const std::string& ip) {
   auto db = PSTORE.GetBackend(db_id_);
-  PDBackendLock pd_backend_share_lock(db, true);
+  db->LockShared();
+  DEFER { db->UnLockShared(); };
 
   std::string store_id_str;
   auto status = db->GetStorage()->HGet(PD_STORE_ID, ip, &store_id_str);
@@ -166,7 +174,8 @@ std::tuple<bool, int64_t> PlacementDriverServer::AddStore(const std::string& ip,
   // 3. update
   // store_id_map_: <"pd_store_id", store ip, storeID>
   auto db = PSTORE.GetBackend(db_id_);
-  PDBackendLock pd_backend_share_lock(db);
+  db->LockShared();
+  DEFER { db->UnLockShared(); };
   int temp = 0;
   auto value = pstd::Int2string(new_store_id);
   auto status = db->GetStorage()->HSet(PD_STORE_ID, ip, value, &temp);
@@ -178,30 +187,32 @@ std::tuple<bool, int64_t> PlacementDriverServer::AddStore(const std::string& ip,
   Store store;
   store.set_store_id(new_store_id);
   store.set_ip(ip);
-  store.set_ip(port);
+  store.set_port(port);
   store.set_state(StoreState::UP);
   std::string store_str;
   if (!store.SerializeToString(&store_str)) {
     return {false, -1};
   }
-  status = db->GetStorage()->HSet(PD_STORE_INFO, new_store_id, store_str, &temp);
+  status = db->GetStorage()->HSet(PD_STORE_INFO, pstd::Int2string(new_store_id), store_str, &temp);
   if (!status.ok()) {
     return {false, -1};
   }
 
   // store_stats_map_: <"pd_store_stats", storeID, storeStats> hash
-  StoreStatsResponse store_stats;
+  StoreStats store_stats;
   store_stats.set_store_id(new_store_id);
   std::string store_stats_str;
   if (!store_stats.SerializeToString(&store_stats_str)) {
     return {false, -1};
   }
-  status = db->GetStorage()->HSet(PD_STORE_STATS, new_store_id, store_stats_str, &temp);
+  status = db->GetStorage()->HSet(PD_STORE_STATS, pstd::Int2string(new_store_id), store_stats_str, &temp);
   if (!status.ok()) {
     return {false, -1};
   }
 
   return {true, new_store_id};
 }
+
+void PlacementDriverServer::GetClusterInfo(GetClusterInfoResponse* response) {}
 
 }  // namespace pikiwidb

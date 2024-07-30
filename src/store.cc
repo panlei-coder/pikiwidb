@@ -21,8 +21,7 @@
 #include "config.h"
 #include "db.h"
 #include "pd.pb.h"
-#include "pd/pd_service.h"
-#include "praft/praft_service.h"
+#include "pd/pd_server.h"
 #include "pstd/log.h"
 #include "pstd/pstd_string.h"
 
@@ -49,6 +48,15 @@ void PStore::Init() {
     return;
   }
 
+  // 3.If the node acts as a pd, then the initializer node can build a pd group based on the configuration.
+  if (g_config.as_pd.load(std::memory_order_relaxed)) {
+    PlacementDriverOptions pd_options(g_config.fake.load(std::memory_order_relaxed),
+                                      std::move(g_config.pd_group_id.ToString()),
+                                      std::move(g_config.pd_conf.ToString()));
+    PDSERVER.Init(pd_options);
+    PDSERVER.Start();
+  }
+
   INFO("STORE Init success!");
 }
 
@@ -57,9 +65,15 @@ bool PStore::InitRpcServer() {
   auto port = g_config.port.load(std::memory_order_relaxed) +
               pikiwidb::g_config.raft_port_offset.load(std::memory_order_relaxed);
 
+  if (braft::add_service(rpc_server_.get(), port) != 0) {
+    rpc_server_.reset();
+    ERROR("Failed to add raft service");
+    return false;
+  }
+
   // Add your service into RPC server
-  DummyServiceImpl dummy_service(&PRAFT);
-  if (rpc_server_->AddService(&dummy_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+  dummy_service_ = std::make_unique<DummyServiceImpl>();
+  if (rpc_server_->AddService(dummy_service_.get(), brpc::SERVER_OWNS_SERVICE) != 0) {
     rpc_server_.reset();
     ERROR("Failed to add service");
     return false;
@@ -67,15 +81,8 @@ bool PStore::InitRpcServer() {
 
   // Add PDService if the node as the pd
   if (g_config.as_pd.load(std::memory_order_relaxed)) {
-    PlacementDriverServer& pd_server = PlacementDriverServer::Instance();
-    PlacementDriverOptions pd_options(g_config.fake.load(std::memory_order_relaxed),
-                                      std::move(g_config.pd_group_id.ToString()),
-                                      std::move(g_config.pd_conf.ToString()));
-    pd_server.Init(pd_options);
-    pd_server.Start();
-
-    PlacementDriverServiceImpl pd_service;
-    if (rpc_server_->AddService(&pd_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+    pd_service_ = std::make_unique<PlacementDriverServiceImpl>();
+    if (rpc_server_->AddService(pd_service_.get(), brpc::SERVER_OWNS_SERVICE) != 0) {
       rpc_server_.reset();
       ERROR("Failed to add service");
       return false;
@@ -84,29 +91,14 @@ bool PStore::InitRpcServer() {
 
   // Add StoreService if the node is deployed in mixed mode or is not currently used as a pd node
   if (!g_config.as_pd.load(std::memory_order_relaxed) || g_config.fake.load(std::memory_order_relaxed)) {
-    StoreServiceImpl store_service;
-    if (rpc_server_->AddService(&store_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+    store_service_ = std::make_unique<StoreServiceImpl>();
+    if (rpc_server_->AddService(store_service_.get(), brpc::SERVER_OWNS_SERVICE) != 0) {
       rpc_server_.reset();
       ERROR("Failed to add service");
       return false;
     }
   }
 
-  // raft can share the same RPC server. Notice the second parameter, because
-  // adding services into a running server is not allowed and the listen
-  // address of this server is impossible to get before the server starts. You
-  // have to specify the address of the server.
-  if (braft::add_service(rpc_server_.get(), port) != 0) {
-    rpc_server_.reset();
-    ERROR("Failed to add raft service");
-    return false;
-  }
-
-  // It's recommended to start the server before Counter is started to avoid
-  // the case that it becomes the leader while the service is unreacheable by
-  // clients.
-  // Notice the default options of server is used here. Check out details from
-  // the doc of brpc if you would like change some option;
   if (rpc_server_->Start(port, nullptr) != 0) {
     rpc_server_.reset();
     ERROR("Failed to start server");
@@ -125,8 +117,8 @@ bool PStore::RegisterStoreToPDServer() {
       return false;
     }
 
-    int retry_times = std::count_if(g_config.pd_conf.ToString().begin(), g_config.pd_conf.ToString().end(),
-                                    [](char& c) { return c == ','; });
+    auto conf = g_config.pd_conf.ToString();
+    int retry_times = std::count_if(conf.begin(), conf.end(), [](char& c) { return c == ','; }) + 2;
     for (int i = 0; i < retry_times; i++) {
       braft::PeerId leader;
       // select leader of the target group from RouteTable
@@ -197,6 +189,7 @@ std::shared_ptr<DB> PStore::GetBackend(int64_t db_id) {
     return it->second;
   }
 
+  WARN("the db of {} is not exist!", db_id);
   return nullptr;
 }
 

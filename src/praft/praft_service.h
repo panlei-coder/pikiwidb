@@ -11,16 +11,12 @@
 
 namespace pikiwidb {
 
-class PRaft;
-
 class DummyServiceImpl : public DummyService {
  public:
-  explicit DummyServiceImpl(PRaft* praft) : praft_(praft) {}
+  DummyServiceImpl() = default;
+
   void DummyMethod(::google::protobuf::RpcController* controller, const ::pikiwidb::DummyRequest* request,
                    ::pikiwidb::DummyResponse* response, ::google::protobuf::Closure* done) override {}
-
- private:
-  PRaft* praft_ = nullptr;
 };
 
 }  // namespace pikiwidb

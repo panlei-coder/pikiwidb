@@ -53,8 +53,8 @@ class DB {
    * you just need to obtain a shared lock.
    */
   std::shared_mutex storage_mutex_;
-  std::unique_ptr<storage::Storage> storage_;
-  std::unique_ptr<PRaft> praft_;
+  std::unique_ptr<storage::Storage> storage_{nullptr};
+  std::unique_ptr<PRaft> praft_{nullptr};
 
   bool opened_ = false;
 };

@@ -14,6 +14,7 @@
 #include "net/event_loop.h"
 #include "praft/praft.h"
 #include "pstd/log.h"
+#include "pstd/pstd_status.h"
 #include "pstd/pstd_string.h"
 
 #include "client.h"
@@ -172,7 +173,16 @@ void RaftClusterCmd::DoCmdInit(PClient* client) {
   } else {
     cluster_id = pstd::RandomHexChars(RAFT_GROUPID_LEN);
   }
-  auto s = PRAFT.Init(cluster_id, false);
+
+  // @todo
+  // For now, create the shards with raft.cluster init
+  auto db_id = client->GetCurrentDB();
+  auto status = PSTORE.AddBackend(db_id, "Pikiwidb");
+  if (!status.ok()) {
+    return client->SetRes(CmdRes::kErrOther, fmt::format("Failed to init db: ", status.ToString()));
+  }
+
+  auto s = PRAFT.Init(std::move(cluster_id), false);
   if (!s.ok()) {
     return client->SetRes(CmdRes::kErrOther, fmt::format("Failed to init node: ", s.error_str()));
   }

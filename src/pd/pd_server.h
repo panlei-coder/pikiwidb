@@ -12,9 +12,12 @@
 #include <tuple>
 
 #include "db.h"
+#include "pd.pb.h"
 #include "pstd/pstd_status.h"
 
 namespace pikiwidb {
+
+#define PDSERVER PlacementDriverServer::Instance()
 
 const std::string PD_STORE_INFO = "pd_store_info";
 const std::string PD_STORE_ID = "pd_store_id";
@@ -22,29 +25,6 @@ const std::string PD_STORE_STATS = "pd_store_stats";
 const std::string PD_MAX_STORE_ID = "pd_max_store_id";
 const std::string PD_REGION_STATS = "pd_region_stats";
 const std::string PD_MAX_REGION_ID = "pd_max_region_id";
-
-class PDBackendLock final : public pstd::noncopyable {
- public:
-  PDBackendLock(std::shared_ptr<DB> db, bool only_read = false) : db_(db), only_read_(only_read) {
-    if (only_read_) {
-      db_->LockShared();
-    } else {
-      db_->Lock();
-    }
-  }
-
-  ~PDBackendLock() {
-    if (only_read_) {
-      db_->UnLockShared();
-    } else {
-      db_->UnLock();
-    }
-  }
-
- private:
-  std::shared_ptr<DB> db_;
-  bool only_read_ = false;
-};
 
 // PD options
 class PlacementDriverOptions {
@@ -89,7 +69,7 @@ class PlacementDriverServer {
   std::tuple<bool, int64_t> GenerateRegionID();
   std::tuple<bool, int64_t> CheckStoreExistByIP(const std::string& ip);
   std::tuple<bool, int64_t> AddStore(const std::string& ip, int32_t port);
-  std::tuple<bool, GetClusterInfoResponse> GetClusterInfo();
+  void GetClusterInfo(GetClusterInfoResponse* response);
 
  private:
   PlacementDriverServer() = default;

@@ -15,6 +15,8 @@
 
 #include "common.h"
 #include "db.h"
+#include "pd/pd_service.h"
+#include "praft/praft_service.h"
 #include "pstd/pstd_status.h"
 #include "storage/storage.h"
 #include "store_service.h"
@@ -68,7 +70,10 @@ class PStore {
 
   std::atomic<int64_t> store_id_ = {0};
 
-  std::unique_ptr<brpc::Server> rpc_server_;
+  std::unique_ptr<brpc::Server> rpc_server_{nullptr};
+  std::unique_ptr<DummyServiceImpl> dummy_service_{nullptr};         // praft service
+  std::unique_ptr<PlacementDriverServiceImpl> pd_service_{nullptr};  // pd service
+  std::unique_ptr<StoreServiceImpl> store_service_{nullptr};         // store service
 
   std::shared_mutex store_mutex_;
   std::unordered_map<int64_t, std::shared_ptr<DB>> backends_table_;  // <db_id, db> / <region_id, region_engine>

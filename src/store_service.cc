@@ -5,27 +5,33 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include "pd_service.h"
+#include "store_service.h"
 
 namespace pikiwidb {
-void GetStoreStats(::PROTOBUF_NAMESPACE_ID::RpcController* controller, const ::pikiwidb::StoreStatsRequest* request,
-                   ::pikiwidb::StoreStatsResponse* response, ::google::protobuf::Closure* done) {}
+void StoreServiceImpl::GetStoreStats(::google::protobuf::RpcController* controller,
+                                     const ::pikiwidb::StoreStatsRequest* request,
+                                     ::pikiwidb::StoreStatsResponse* response, ::google::protobuf::Closure* done) {}
 
-void GetRegionStats(::PROTOBUF_NAMESPACE_ID::RpcController* controller, const ::pikiwidb::RegionStatsRequest* request,
-                    ::pikiwidb::RegionStatsResponse* response, ::google::protobuf::Closure* done) {}
+void StoreServiceImpl::GetRegionStats(::google::protobuf::RpcController* controller,
+                                      const ::pikiwidb::RegionStatsRequest* request,
+                                      ::pikiwidb::RegionStatsResponse* response, ::google::protobuf::Closure* done) {}
 
-void InitRegionPeer(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                    const ::pikiwidb::InitRegionPeerRequest* request, ::pikiwidb::InitRegionPeerResponse* response,
-                    ::google::protobuf::Closure* done) {}
+void StoreServiceImpl::InitRegionPeer(::google::protobuf::RpcController* controller,
+                                      const ::pikiwidb::InitRegionPeerRequest* request,
+                                      ::pikiwidb::InitRegionPeerResponse* response, ::google::protobuf::Closure* done) {
+}
 
-void AddRegionPeer(::PROTOBUF_NAMESPACE_ID::RpcController* controller, const ::pikiwidb::AddRegionPeerRequest* request,
-                   ::pikiwidb::AddRegionResponse* response, ::google::protobuf::Closure* done) {}
+void StoreServiceImpl::AddRegionPeer(::google::protobuf::RpcController* controller,
+                                     const ::pikiwidb::AddRegionPeerRequest* request,
+                                     ::pikiwidb::AddRegionResponse* response, ::google::protobuf::Closure* done) {}
 
-void RemoveRegionPeer(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                      const ::pikiwidb::RemoveRegionPeerRequest* request,
-                      ::pikiwidb::RemoveRegionPeerResponse* response, ::google::protobuf::Closure* done) {}
+void StoreServiceImpl::RemoveRegionPeer(::google::protobuf::RpcController* controller,
+                                        const ::pikiwidb::RemoveRegionPeerRequest* request,
+                                        ::pikiwidb::RemoveRegionPeerResponse* response,
+                                        ::google::protobuf::Closure* done) {}
 
-void TransferLeader(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                    const ::pikiwidb::TransferLeaderRequest* request, ::pikiwidb::TransferLeaderResponse* response,
-                    ::google::protobuf::Closure* done) {}
+void StoreServiceImpl::TransferLeader(::google::protobuf::RpcController* controller,
+                                      const ::pikiwidb::TransferLeaderRequest* request,
+                                      ::pikiwidb::TransferLeaderResponse* response, ::google::protobuf::Closure* done) {
+}
 }  // namespace pikiwidb

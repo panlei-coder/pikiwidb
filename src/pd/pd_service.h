@@ -8,34 +8,35 @@
 #pragma once
 
 #include "pd.pb.h"
-#include "pd_server.h"
-#include "praft.h"
-#include "store.pb.h"
 
 namespace pikiwidb {
 
 class PlacementDriverServiceImpl : public PlacementDriverService {
  public:
   PlacementDriverServiceImpl() = default;
-  ~PlacementDriverServiceImpl() = default;
 
-  void CreateAllRegions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+  void CreateAllRegions(::google::protobuf::RpcController* controller,
                         const ::pikiwidb::CreateAllRegionsRequest* request,
                         ::pikiwidb::CreateAllRegionsResponse* response, ::google::protobuf::Closure* done) override;
-  void DeleteAllRegions(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+
+  void DeleteAllRegions(::google::protobuf::RpcController* controller,
                         const ::pikiwidb::DeleteAllRegionsRequest* request,
                         ::pikiwidb::DeleteAllRegionsResponse* response, ::google::protobuf::Closure* done) override;
-  void AddStore(::PROTOBUF_NAMESPACE_ID::RpcController* controller, const ::pikiwidb::AddStoreRequest* request,
+
+  void AddStore(::google::protobuf::RpcController* controller, const ::pikiwidb::AddStoreRequest* request,
                 ::pikiwidb::AddStoreResponse* response, ::google::protobuf::Closure* done) override;
-  void RemoveStore(::PROTOBUF_NAMESPACE_ID::RpcController* controller, const ::pikiwidb::RemoveStoreRequest* request,
+
+  void RemoveStore(::google::protobuf::RpcController* controller, const ::pikiwidb::RemoveStoreRequest* request,
                    ::pikiwidb::RemoveStoreResponse* response, ::google::protobuf::Closure* done) override;
-  void GetClusterInfo(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                      const ::pikiwidb::GetClusterInfoRequest* request, ::pikiwidb::GetClusterInfoResponse* response,
-                      ::google::protobuf::Closure* done) override;
-  void OpenPDScheduling(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+
+  void GetClusterInfo(::google::protobuf::RpcController* controller, const ::pikiwidb::GetClusterInfoRequest* request,
+                      ::pikiwidb::GetClusterInfoResponse* response, ::google::protobuf::Closure* done) override;
+
+  void OpenPDScheduling(::google::protobuf::RpcController* controller,
                         const ::pikiwidb::OpenPDSchedulingRequest* request,
                         ::pikiwidb::OpenPDSchedulingResponse* response, ::google::protobuf::Closure* done) override;
-  void ClosePDScheduling(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+
+  void ClosePDScheduling(::google::protobuf::RpcController* controller,
                          const ::pikiwidb::ClosePDSchedulingRequest* request,
                          ::pikiwidb::ClosePDSchedulingResponse* response, ::google::protobuf::Closure* done) override;
 };

@@ -159,7 +159,7 @@ bool PikiwiDB::Init() {
     return false;
   }
 
-  PSTORE.Init(g_config.databases.load(std::memory_order_relaxed));
+  PSTORE.Init();
 
   PSlowLog::Instance().SetThreshold(g_config.slow_log_time.load());
   PSlowLog::Instance().SetLogLimit(static_cast<std::size_t>(g_config.slow_log_max_len.load()));

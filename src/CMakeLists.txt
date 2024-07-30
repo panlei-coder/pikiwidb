@@ -9,7 +9,7 @@ ADD_CUSTOM_COMMAND(
   COMMAND ${PROTOBUF_PROTOC}
   ARGS -I ${CMAKE_CURRENT_SOURCE_DIR}
     --cpp_out ${PROTO_OUTPUT_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/store.proto
+    store.proto
 )
 ADD_LIBRARY(store_pb STATIC "${PROTO_OUTPUT_DIR}/store.pb.cc")
 SET(LIBRARY_OUTPUT_PATH ${PLIB_INSTALL_DIR})
@@ -43,7 +43,6 @@ TARGET_INCLUDE_DIRECTORIES(pikiwidb
         PRIVATE ${BRPC_INCLUDE_DIR}
         PRIVATE ${LIBEVENT_INCLUDE_DIRS}
         PRIVATE ${PROTO_OUTPUT_DIR}
-        PRIVATE ${PROTO_OUTPUT_DIR}/pd
 )
 
 ADD_DEPENDENCIES(pikiwidb
@@ -59,6 +58,9 @@ ADD_DEPENDENCIES(pikiwidb
         brpc
         storage
         store_pb
+        pd_pb
+        praft_pb
+        binlog_pb
 )
 
 TARGET_LINK_LIBRARIES(pikiwidb
@@ -81,11 +83,12 @@ TARGET_LINK_LIBRARIES(pikiwidb
         protobuf
         leveldb
         z
+        pd
         praft
+        store_pb
+        pd_pb
         praft_pb
         binlog_pb
-        pd_pb
-        store_pb
         "${LIB}"
 )
 
