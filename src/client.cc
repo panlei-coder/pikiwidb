@@ -137,6 +137,11 @@ void CmdRes::SetRes(CmdRes::CmdRet _ret, const std::string& content) {
       AppendStringRaw("-ERR wrong leader");
       AppendStringRaw(content);
       AppendStringRaw(CRLF);
+    case kMultiKey:
+      AppendStringRaw("-WRONGTYPE Operation against a key holding the wrong kind of value");
+      AppendStringRaw(content);
+      AppendStringRaw(CRLF);
+      break;
     default:
       break;
   }

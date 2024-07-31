@@ -49,6 +49,7 @@ class CmdRes {
     KIncrByOverFlow,
     kInvalidCursor,
     kWrongLeader,
+    kMultiKey,
   };
 
   CmdRes() = default;
