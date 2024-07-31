@@ -59,15 +59,16 @@ void BaseCmd::Execute(PClient* client) {
   if (!HasFlag(kCmdFlagsExclusive)) {
     PSTORE.GetBackend(dbIndex)->LockShared();
   }
+  DEFER {
+    if (!HasFlag(kCmdFlagsExclusive)) {
+      PSTORE.GetBackend(dbIndex)->UnLockShared();
+    }
+  };
 
   if (!DoInitial(client)) {
     return;
   }
   DoCmd(client);
-
-  if (!HasFlag(kCmdFlagsExclusive)) {
-    PSTORE.GetBackend(dbIndex)->UnLockShared();
-  }
 }
 
 std::string BaseCmd::ToBinlog(uint32_t exec_time, uint32_t term_id, uint64_t logic_id, uint32_t filenum,
