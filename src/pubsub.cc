@@ -8,7 +8,6 @@
 #include <fnmatch.h>
 
 #include "client.h"
-// #include "event_loop.h"
 #include "log.h"
 #include "pubsub.h"
 

@@ -10,9 +10,7 @@
 
 #include "client.h"
 #include "config.h"
-// #include "event_loop.h"
 #include "log.h"
-// #include "net/util.h"
 #include "pikiwidb.h"
 #include "pstd/pstd_string.h"
 #include "replication.h"

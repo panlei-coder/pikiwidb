@@ -8,7 +8,6 @@
 #include "cmd_table_manager.h"
 #include "cmd_thread_pool.h"
 #include "common.h"
-#include "io_thread_pool.h"
 #include "net/event_server.h"
 
 #define KPIKIWIDB_VERSION "4.0.0"

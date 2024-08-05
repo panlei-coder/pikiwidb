@@ -451,6 +451,7 @@ void PClient::OnConnect() {
 
 std::string PClient::PeerIP() const {
   if (!addr_.IsValid()) {
+    ERROR("Invalid address detected for client {}", uniqueID());
     return "";
   }
   return addr_.GetIP();
@@ -458,6 +459,7 @@ std::string PClient::PeerIP() const {
 
 int PClient::PeerPort() const {
   if (!addr_.IsValid()) {
+    ERROR("Invalid address detected for client {}", uniqueID());
     return 0;
   }
   return addr_.GetPort();

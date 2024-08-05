@@ -60,8 +60,6 @@ extern struct PErrorInfo {
 
 int StrToLongDouble(const char* s, size_t slen, long double* ldval);
 
-// class UnboundedBuffer;
-
 std::size_t FormatInt(long value, UnboundedBuffer* reply);
 std::size_t FormatBulk(const char* str, std::size_t len, UnboundedBuffer* reply);
 std::size_t FormatBulk(const PString& str, UnboundedBuffer* reply);
