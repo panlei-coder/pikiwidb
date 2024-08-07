@@ -280,10 +280,10 @@ int main(int ac, char* av[]) {
     daemonize();
   }
 
-  InitLimit();
   pstd::InitRandom();
   SignalSetup();
   InitLogs();
+  InitLimit();
 
   if (g_config.daemonize.load()) {
     closeStd();
