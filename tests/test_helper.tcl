@@ -13,7 +13,7 @@ source tests/support/util.tcl
 
 set ::all_tests {
    # unit/printver
-   # unit/basic
+   unit/basic
    # unit/scan
    # unit/multi
    unit/quit
