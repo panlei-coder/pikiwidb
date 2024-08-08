@@ -21,7 +21,7 @@ set ::all_tests {
    # unit/pubsub
    # unit/slowlog
    # unit/maxmemory
-   # unit/bitops
+   unit/bitops
    # unit/hyperloglog
    # unit/type
    # unit/acl
