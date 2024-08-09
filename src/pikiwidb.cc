@@ -225,7 +225,7 @@ static int InitLimit() {
     limit.rlim_cur = maxfiles;
     limit.rlim_max = maxfiles;
     if (setrlimit(RLIMIT_NOFILE, &limit) != -1) {
-      WARN("your 'limit -n ' of {} is not enough for PikiwiDB to start. PikiwiDB have successfully reconfig it to ",
+      WARN("your 'limit -n' of {} is not enough for PikiwiDB to start. PikiwiDB has successfully reconfig it to {}",
            old_limit, limit.rlim_cur);
     } else {
       ERROR(
@@ -235,6 +235,7 @@ static int InitLimit() {
       return -1;
     }
   }
+
   return 0;
 }
 
