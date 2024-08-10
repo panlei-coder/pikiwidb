@@ -72,6 +72,8 @@
 // of patent rights can be found in the PATENTS file in the same directory.
 
 #include "pstd_hash.h"
+
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 
