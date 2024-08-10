@@ -28,14 +28,20 @@ scl enable devtoolset-11 bash
 执行以下命令开始编译 PikiwiDB:
 
 ```bash
-sh ./etc/script/build.sh
+./etc/script/build.sh
 ```
 
 PikiwiDB 默认以 release 模式编译，不支持调试。如果需要调试，请以 debug 模式编译。
 
 ```bash
-sh ./etc/script/build.sh --clear
-sh ./etc/script/build.sh --debug
+./etc/script/build.sh --clear
+./etc/script/build.sh --debug
+```
+
+## 运行
+
+```bash
+bin/pikiwidb etc/conf/pikiwidb.conf
 ```
 
 ## 与 Redis 完全兼容

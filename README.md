@@ -28,14 +28,20 @@ scl enable devtoolset-11 bash
 Execute this command to start compiling Pikiwidb:
 
 ```bash
-sh ./etc/script/build.sh 
+./etc/script/build.sh 
 ```
 
 Pikiwidb is compiled by default in release mode, which does not support debugging. If debugging is needed, compile in debug mode.
 
 ```bash
-sh ./etc/script/build.sh --clear
-sh ./etc/script/build.sh --debug
+./etc/script/build.sh --clear
+./etc/script/build.sh --debug
+```
+
+## run
+
+```bash
+bin/pikiwidb etc/conf/pikiwidb.conf
 ```
 
 ## Support module for write your own extensions
