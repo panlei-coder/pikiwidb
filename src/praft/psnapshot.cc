@@ -28,7 +28,7 @@ braft::FileAdaptor* PPosixFileSystemAdaptor::open(const std::string& path, int o
   if ((oflag & IS_RDONLY) == 0) {  // This is a read operation
     bool snapshots_exists = false;
     std::string snapshot_path;
-    int db_id = -1;
+    int64_t db_id = -1;
 
     // parse snapshot path
     butil::FilePath parse_snapshot_path(path);
@@ -83,7 +83,7 @@ braft::FileAdaptor* PPosixFileSystemAdaptor::open(const std::string& path, int o
       auto& new_meta = const_cast<braft::SnapshotMeta&>(snapshot_meta_memtable.meta());
       auto last_log_index = PSTORE.GetBackend(db_id)->GetStorage()->GetSmallestFlushedLogIndex();
       new_meta.set_last_included_index(last_log_index);
-      auto last_log_term = PRAFT.GetTerm(last_log_index);
+      auto last_log_term = PSTORE.GetBackend(db_id)->GetPRaft()->GetTerm(last_log_index);
       new_meta.set_last_included_term(last_log_term);
       INFO("Succeed to fix db_{} snapshot meta: {}, {}", db_id, last_log_index, last_log_term);
 

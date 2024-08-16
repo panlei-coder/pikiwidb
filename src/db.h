@@ -43,7 +43,7 @@ class DB {
 
   int GetDBID() { return db_id_; }
 
-  PRaft* GetPRaft() { return praft_.get(); }
+  std::unique_ptr<PRaft>& GetPRaft() { return praft_; }
 
  private:
   const int64_t db_id_ = 0;    // region id

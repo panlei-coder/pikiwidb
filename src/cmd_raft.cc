@@ -40,12 +40,11 @@ bool RaftNodeCmd::DoInitial(PClient* client) {
     return false;
   }
   group_id_ = client->argv_[2];
-  praft_ = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
+
   return true;
 }
 
 void RaftNodeCmd::DoCmd(PClient* client) {
-  assert(praft_);
   auto cmd = client->argv_[1];
   pstd::StringToUpper(cmd);
   if (cmd == kAddCmd) {
@@ -62,12 +61,10 @@ void RaftNodeCmd::DoCmd(PClient* client) {
 
 void RaftNodeCmd::DoCmdAdd(PClient* client) {
   DEBUG("Received RAFT.NODE ADD cmd from {}", client->PeerIP());
-  auto db = PSTORE.GetDBByGroupID(group_id_);
-  assert(db);
-  auto praft = db->GetPRaft();
+  auto& praft = PSTORE.GetDBByGroupID(group_id_)->GetPRaft();
   // Check whether it is a leader. If it is not a leader, return the leader information
   if (!praft->IsLeader()) {
-    client->SetRes(CmdRes::kWrongLeader, praft_->GetLeaderID());
+    client->SetRes(CmdRes::kWrongLeader, praft->GetLeaderID());
     return;
   }
 
@@ -87,8 +84,9 @@ void RaftNodeCmd::DoCmdAdd(PClient* client) {
 }
 
 void RaftNodeCmd::DoCmdRemove(PClient* client) {
+  auto& praft = PSTORE.GetDBByGroupID(group_id_)->GetPRaft();
   // If the node has been initialized, it needs to close the previous initialization and rejoin the other group
-  if (!praft_->IsInitialized()) {
+  if (!praft->IsInitialized()) {
     client->SetRes(CmdRes::kErrOther, "Don't already cluster member");
     return;
   }
@@ -99,9 +97,9 @@ void RaftNodeCmd::DoCmdRemove(PClient* client) {
   }
 
   // Check whether it is a leader. If it is not a leader, send remove request to leader
-  if (!praft_->IsLeader()) {
+  if (!praft->IsLeader()) {
     // Get the leader information
-    braft::PeerId leader_peer_id(praft_->GetLeaderID());
+    braft::PeerId leader_peer_id(praft->GetLeaderID());
     // @todo There will be an unreasonable address, need to consider how to deal with it
     if (leader_peer_id.is_empty()) {
       client->SetRes(CmdRes::kErrOther,
@@ -117,7 +115,7 @@ void RaftNodeCmd::DoCmdRemove(PClient* client) {
     NodeRemoveRequest request;
     NodeRemoveResponse response;
 
-    request.set_group_id(praft_->GetGroupID());
+    request.set_group_id(praft->GetGroupID());
     request.set_endpoint(client->argv_[2]);
     request.set_index(client->GetCurrentDB());
     request.set_role(0);
@@ -166,7 +164,7 @@ void RaftNodeCmd::DoCmdRemove(PClient* client) {
     return;
   }
 
-  auto s = praft_->RemovePeer(client->argv_[2], client->GetCurrentDB());
+  auto s = praft->RemovePeer(client->argv_[2], client->GetCurrentDB());
   if (s.ok()) {
     client->SetRes(CmdRes::kOK);
   } else {
@@ -175,7 +173,8 @@ void RaftNodeCmd::DoCmdRemove(PClient* client) {
 }
 
 void RaftNodeCmd::DoCmdSnapshot(PClient* client) {
-  auto s = praft_->DoSnapshot();
+  auto& praft = PSTORE.GetDBByGroupID(group_id_)->GetPRaft();
+  auto s = praft->DoSnapshot();
   if (s.ok()) {
     client->SetRes(CmdRes::kOK);
   }
@@ -192,13 +191,12 @@ bool RaftClusterCmd::DoInitial(PClient* client) {
     return false;
   }
 
-  praft_ = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
   return true;
 }
 
 void RaftClusterCmd::DoCmd(PClient* client) {
-  assert(praft_);
-  if (praft_->IsInitialized()) {
+  auto& praft = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
+  if (praft->IsInitialized()) {
     return client->SetRes(CmdRes::kErrOther, "Already cluster member");
   }
 
@@ -227,14 +225,9 @@ void RaftClusterCmd::DoCmdInit(PClient* client) {
     group_id = pstd::RandomHexChars(RAFT_GROUPID_LEN);
   }
 
-  auto add_region_success = PSTORE.AddRegion(group_id, client->GetCurrentDB());
-  if (add_region_success) {
-    auto s = praft_->Init(group_id, false);
-    if (!s.ok()) {
-      PSTORE.RemoveRegion(group_id);
-      ClearPaftCtx();
-      return client->SetRes(CmdRes::kErrOther, fmt::format("Failed to init raft node: {}", s.error_str()));
-    }
+  std::string group_id_copy(group_id);
+  auto s = PSTORE.AddBackend(client->GetCurrentDB(), std::move(group_id_copy));
+  if (s.ok()) {
     client->SetLineString(fmt::format("+OK {}", group_id));
   } else {
     client->SetRes(CmdRes::kErrOther, fmt::format("The current GroupID {} already exists", group_id));
@@ -268,16 +261,12 @@ void RaftClusterCmd::DoCmdJoin(PClient* client) {
                           "Cluster id must be " + std::to_string(RAFT_GROUPID_LEN) + " characters");
   }
 
-  auto add_region_success = PSTORE.AddRegion(group_id, client->GetCurrentDB());
-  if (add_region_success) {
-    auto s = praft_->Init(group_id, false);
-    if (!s.ok()) {
-      PSTORE.RemoveRegion(group_id);
-      ClearPaftCtx();
-      return client->SetRes(CmdRes::kErrOther, fmt::format("Failed to init raft node: {}", s.error_str()));
-    }
-  } else {
-    client->SetRes(CmdRes::kErrOther, fmt::format("The current GroupID {} already exists", group_id));
+  std::string group_id_copy(group_id);
+  auto db_id = client->GetCurrentDB();
+  auto s = PSTORE.AddBackend(db_id, std::move(group_id_copy));
+  if (!s.ok()) {
+    client->SetRes(CmdRes::kErrOther,
+                   fmt::format("The current GroupID {} fails to create region because of {}", group_id, s.ToString()));
   }
 
   brpc::ChannelOptions options;
@@ -299,8 +288,7 @@ void RaftClusterCmd::DoCmdJoin(PClient* client) {
   do {
     brpc::Channel add_node_channel;
     if (0 != add_node_channel.Init(endpoint, &options)) {
-      PSTORE.RemoveRegion(group_id);
-      ClearPaftCtx();
+      PSTORE.RemoveBackend(db_id);
       ERROR("Fail to init add_node_channel to praft service!");
       client->SetRes(CmdRes::kErrOther, "Fail to init add_node_channel.");
       return;
@@ -311,8 +299,7 @@ void RaftClusterCmd::DoCmdJoin(PClient* client) {
     stub.AddNode(&cntl, &request, &response, NULL);
 
     if (cntl.Failed()) {
-      PSTORE.RemoveRegion(group_id);
-      ClearPaftCtx();
+      PSTORE.RemoveBackend(db_id);
       ERROR("Fail to send add node rpc to target server {}", addr);
       client->SetRes(CmdRes::kErrOther, "Failed to send add node rpc");
       return;
@@ -331,8 +318,7 @@ void RaftClusterCmd::DoCmdJoin(PClient* client) {
       }
       default: {
         ERROR("Add node request return false");
-        PSTORE.RemoveRegion(group_id);
-        ClearPaftCtx();
+        PSTORE.RemoveBackend(db_id);
         client->SetRes(CmdRes::kErrOther, "Failed to Add Node");
         return;
       }
@@ -340,16 +326,8 @@ void RaftClusterCmd::DoCmdJoin(PClient* client) {
   } while (!response.success() && ++retry_count <= 3);
 
   ERROR("Add node request return false");
-  PSTORE.RemoveRegion(group_id);
-  ClearPaftCtx();
+  PSTORE.RemoveBackend(db_id);
   client->SetRes(CmdRes::kErrOther, "Failed to Add Node");
 }
 
-void RaftClusterCmd::ClearPaftCtx() {
-  assert(praft_);
-  praft_->ShutDown();
-  praft_->Join();
-  praft_->Clear();
-  praft_ = nullptr;
-}
 }  // namespace pikiwidb

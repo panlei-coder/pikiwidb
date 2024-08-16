@@ -18,11 +18,11 @@
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 
-#include <memory>
-#include <vector>
 #include <atomic>
+#include <memory>
 #include <shared_mutex>
 #include <unordered_map>
+#include <vector>
 
 #include "brpc/server.h"
 #include "butil/endpoint.h"
@@ -82,35 +82,21 @@ class PStore {
 
   std::shared_ptr<DB> GetBackend(int64_t db_id);
 
+  std::shared_ptr<DB> GetDBByGroupID(const std::string& group_id);
+
   pstd::Status AddBackend(int64_t db_id, std::string&& group_id);
+
+  pstd::Status RemoveBackend(int64_t db_id);
 
   void HandleTaskSpecificDB(const TasksVector& tasks);
 
-  brpc::Server* GetRpcServer() const { return rpc_server_.get(); }
-
   const butil::EndPoint& GetEndPoint() const { return endpoint_; }
-
-  /**
-   * return true if add group_id -> dbno into region_map_ success.
-   * return false if group_id -> dbno already exists in region_map_.
-   */
-  bool AddRegion(const std::string& group_id, uint32_t dbno);
-
-  /**
-   * return true if remove group_id -> dbno from region_map_ success.
-   * return false if group_id -> dbno do not exists in region_map_.
-   */
-  bool RemoveRegion(const std::string& group_id);
-
-  /**
-   * return nullptr if group_id -> dbno do not existed in region_map_.
-   */
-  DB* GetDBByGroupID(const std::string& group_id) const;
 
  private:
   PStore() = default;
 
   std::atomic<int64_t> store_id_ = {0};
+  butil::EndPoint endpoint_;
 
   std::unique_ptr<brpc::Server> rpc_server_{nullptr};
   std::unique_ptr<PRaftServiceImpl> praft_service_{nullptr};         // praft service
@@ -119,6 +105,7 @@ class PStore {
 
   std::shared_mutex store_mutex_;
   std::unordered_map<int64_t, std::shared_ptr<DB>> backends_table_;  // <db_id, db> / <region_id, region_engine>
+  std::unordered_map<std::string, int64_t> group_id_of_db_id_;       // <group_id, db_id> / <group_id, region_id>
 
   std::atomic<int64_t> is_started_ = {false};
 };

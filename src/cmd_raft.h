@@ -51,7 +51,6 @@ class RaftNodeCmd : public BaseCmd {
   void DoCmdSnapshot(PClient *client);
 
  private:
-  PRaft *praft_ = nullptr;
   std::string group_id_;
 
   static constexpr std::string_view kAddCmd = "ADD";
@@ -82,11 +81,7 @@ class RaftClusterCmd : public BaseCmd {
   void DoCmdInit(PClient *client);
   void DoCmdJoin(PClient *client);
 
-  void ClearPaftCtx();
-
  private:
-  PRaft *praft_ = nullptr;
-
   static constexpr std::string_view kInitCmd = "INIT";
   static constexpr std::string_view kJoinCmd = "JOIN";
 };

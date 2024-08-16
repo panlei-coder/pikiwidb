@@ -14,8 +14,8 @@
 #include "log.h"
 #include "pikiwidb.h"
 #include "praft/praft.h"
-#include "store.h"
 #include "pstd_string.h"
+#include "store.h"
 
 namespace pikiwidb {
 
@@ -40,7 +40,8 @@ void BaseCmd::Execute(PClient* client) {
   DEBUG("execute command: {}", client->CmdName());
 
   if (g_config.use_raft.load()) {
-    auto praft = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
+    // @todo need to find region by key
+    auto& praft = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
     // 1. If PRAFT is not initialized yet, return an error message to the client for both read and write commands.
     if (!praft->IsInitialized() && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
       DEBUG("drop command: {}", client->CmdName());

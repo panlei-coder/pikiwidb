@@ -542,7 +542,7 @@ bool PClient::isPeerMaster() const {
 }
 
 bool PClient::isClusterCmdTarget() const {
-  auto praft = PSTORE.GetBackend(dbno_)->GetPRaft();
+  auto& praft = PSTORE.GetBackend(dbno_)->GetPRaft();
   return praft->GetClusterCmdCtx().GetPeerIp() == PeerIP() && praft->GetClusterCmdCtx().GetPort() == PeerPort();
 }
 

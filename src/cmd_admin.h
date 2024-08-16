@@ -32,7 +32,7 @@ class CmdConfig : public BaseCmdGroup {
  private:
   //  std::vector<std::string> subCmd_;
 
-  void DoCmd(PClient* client) override{};
+  void DoCmd(PClient* client) override {};
 };
 
 class CmdConfigGet : public BaseCmd {
@@ -124,9 +124,6 @@ class InfoCmd : public BaseCmd {
 
   void InfoRaft(PClient* client);
   void InfoData(PClient* client);
-
- private:
-  PRaft* praft_ = nullptr;
 };
 
 class CmdDebug : public BaseCmdGroup {
@@ -139,7 +136,7 @@ class CmdDebug : public BaseCmdGroup {
   bool DoInitial(PClient* client) override { return true; };
 
  private:
-  void DoCmd(PClient* client) override{};
+  void DoCmd(PClient* client) override {};
 };
 
 class CmdDebugHelp : public BaseCmd {

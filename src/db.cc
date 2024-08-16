@@ -15,12 +15,10 @@ extern pikiwidb::PConfig g_config;
 
 namespace pikiwidb {
 
-DB::DB(int64_t db_id, const std::string& db_path) 
-    : db_id_(db_id), 
-      db_path_(db_path + std::to_string(db_id_) + '/'), 
-      praft_(std::make_unique<PRaft>(db_index)) {}
+DB::DB(int64_t db_id, const std::string& db_path)
+    : db_id_(db_id), db_path_(db_path + std::to_string(db_id_) + '/'), praft_(std::make_unique<PRaft>(db_id)) {}
 
-DB::~DB() { INFO("DB{} is closing...", db_id_); }
+DB::~DB() { INFO("DB_{} is closing...", db_id_); }
 
 pstd::Status DB::Init(std::string&& group_id) {
   rocksdb::Status rs = Open();
@@ -28,13 +26,10 @@ pstd::Status DB::Init(std::string&& group_id) {
     return pstd::Status::Error(rs.ToString());
   }
 
-  // @todo
-  // For now, use the global singleton PRAFT
-  // praft_ = std::make_unique<PRaft>();
-  // butil::Status bs = praft_->Init(std::move(group_id), true);
-  // if (!bs.ok()) {
-  //   return pstd::Status::Error(bs.error_str());
-  // }
+  butil::Status bs = praft_->Init(std::move(group_id), true);
+  if (!bs.ok()) {
+    return pstd::Status::Error(bs.error_str());
+  }
 
   return pstd::Status::OK();
 }

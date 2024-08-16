@@ -25,6 +25,7 @@
 #include "praft/praft_service.h"
 #include "pstd/log.h"
 #include "pstd/pstd_string.h"
+#include "pstd_status.h"
 
 namespace pikiwidb {
 PStore::~PStore() { INFO("STORE is closing..."); }
@@ -57,15 +58,21 @@ void PStore::Init() {
     PDSERVER.Start();
   }
 
+  is_started_.store(true, std::memory_order_relaxed);
+
   INFO("STORE Init success!");
 }
 
 bool PStore::InitRpcServer() {
   rpc_server_ = std::make_unique<brpc::Server>();
-  auto port = g_config.port.load(std::memory_order_relaxed) +
-              pikiwidb::g_config.raft_port_offset.load(std::memory_order_relaxed);
+  auto ip = g_config.ip.ToString();
+  butil::ip_t rpc_ip;
+  butil::str2ip(ip.c_str(), &rpc_ip);
+  auto rpc_port =
+      g_config.port.load(std::memory_order_relaxed) + g_config.raft_port_offset.load(std::memory_order_relaxed);
+  endpoint_ = butil::EndPoint(rpc_ip, rpc_port);
 
-  if (braft::add_service(rpc_server_.get(), port) != 0) {
+  if (braft::add_service(rpc_server_.get(), endpoint_) != 0) {
     rpc_server_.reset();
     ERROR("Failed to add raft service");
     return false;
@@ -75,7 +82,7 @@ bool PStore::InitRpcServer() {
   praft_service_ = std::make_unique<PRaftServiceImpl>();
   if (rpc_server_->AddService(praft_service_.get(), brpc::SERVER_OWNS_SERVICE) != 0) {
     rpc_server_.reset();
-    ERROR("Failed to add service");
+    ERROR("Failed to add praft service");
     return false;
   }
 
@@ -84,7 +91,7 @@ bool PStore::InitRpcServer() {
     pd_service_ = std::make_unique<PlacementDriverServiceImpl>();
     if (rpc_server_->AddService(pd_service_.get(), brpc::SERVER_OWNS_SERVICE) != 0) {
       rpc_server_.reset();
-      ERROR("Failed to add service");
+      ERROR("Failed to add pd service");
       return false;
     }
   }
@@ -94,12 +101,12 @@ bool PStore::InitRpcServer() {
     store_service_ = std::make_unique<StoreServiceImpl>();
     if (rpc_server_->AddService(store_service_.get(), brpc::SERVER_OWNS_SERVICE) != 0) {
       rpc_server_.reset();
-      ERROR("Failed to add service");
+      ERROR("Failed to add store service");
       return false;
     }
   }
 
-  if (rpc_server_->Start(port, nullptr) != 0) {
+  if (rpc_server_->Start(endpoint_, nullptr) != 0) {
     rpc_server_.reset();
     ERROR("Failed to start server");
     return false;
@@ -193,6 +200,17 @@ std::shared_ptr<DB> PStore::GetBackend(int64_t db_id) {
   return nullptr;
 }
 
+std::shared_ptr<DB> PStore::GetDBByGroupID(const std::string& group_id) {
+  std::shared_lock lock(store_mutex_);
+  auto it = group_id_of_db_id_.find(group_id);
+  if (it != group_id_of_db_id_.end()) {
+    return GetBackend(it->second);
+  }
+
+  WARN("the group_id of {} is not exist!", group_id);
+  return nullptr;
+}
+
 pstd::Status PStore::AddBackend(int64_t db_id, std::string&& group_id) {
   std::lock_guard<std::shared_mutex> lock(store_mutex_);
   auto it = backends_table_.find(db_id);
@@ -201,7 +219,19 @@ pstd::Status PStore::AddBackend(int64_t db_id, std::string&& group_id) {
   }
 
   backends_table_.insert({db_id, std::make_shared<DB>(db_id, g_config.db_path)});
+  group_id_of_db_id_.insert({group_id, db_id});
   return backends_table_[db_id]->Init(std::move(group_id));
+}
+
+pstd::Status PStore::RemoveBackend(int64_t db_id) {
+  std::lock_guard<std::shared_mutex> lock(store_mutex_);
+  auto it = backends_table_.find(db_id);
+  if (it != backends_table_.end()) {
+    group_id_of_db_id_.erase(it->second->GetPRaft()->GetGroupID());
+    backends_table_.erase(it);
+  }
+
+  return pstd::Status::OK();
 }
 
 void PStore::HandleTaskSpecificDB(const TasksVector& tasks) {

@@ -19,6 +19,7 @@ namespace pikiwidb {
 
 #define PDSERVER PlacementDriverServer::Instance()
 
+const std::string PIKIWIDB_PD_METADATA = "PikiwiDB_PD_MetaData";
 const std::string PD_STORE_INFO = "pd_store_info";
 const std::string PD_STORE_ID = "pd_store_id";
 const std::string PD_STORE_STATS = "pd_store_stats";
@@ -45,12 +46,17 @@ class PlacementDriverOptions {
 
 // PD
 /*
+If atom write is considered, store_map_, store_id_map_, store_stats_map_, 
+and region_stats_map_ are all values of "PikiwiDB_PD_MetaData", 
+HMSET can be used to ensure atom write. Later, to read all the values of a map, 
+use HSCAN to obtain field_key that meets a certain prefix.
+
 Store and Region meta information is persisted to Floyd:
-1.store_map_: <"pd_store_info", storeID, store> hash
-2.store_id_map_: <"pd_store_id", store ip, storeID> hash
-3.store_stats_map_: <"pd_store_stats", storeID, storeStats> hash
+1.store_map_: <"PikiwiDB_PD_MetaData", "pd_store_info" + storeID, store> hash
+2.store_id_map_: <"PikiwiDB_PD_MetaData", "pd_store_id" + store ip, storeID> hash
+3.store_stats_map_: <"PikiwiDB_PD_MetaData", "pd_store_stats" + storeID, storeStats> hash
 4.max_store_id_: <"pd_max_store_id", maxStoreID> string
-5.region_stats_map_: <"pd_region_stats", regionID, regionStats> hash
+5.region_stats_map_: <"PikiwiDB_PD_MetaData", "pd_region_stats" + regionID, regionStats> hash
 6.max_region_id: <"pd_max_region_id", maxRegionID> string
 */
 class PlacementDriverServer {

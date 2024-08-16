@@ -90,7 +90,7 @@ class PRaftWriteDoneClosure : public braft::Closure {
 
 class PRaft : public braft::StateMachine {
  public:
-  PRaft(uint32_t db_id) : db_id_(db_id) {}
+  PRaft(uint64_t db_id) : db_id_(db_id) {}
   ~PRaft() override {
     ShutDown();
     Join();
@@ -161,8 +161,8 @@ class PRaft : public braft::StateMachine {
   std::unique_ptr<braft::Node> node_{nullptr};
   scoped_refptr<braft::FileSystemAdaptor> snapshot_adaptor_ = nullptr;
   ClusterCmdContext cluster_cmd_ctx_{this};  // context for cluster join/remove command
-  std::string group_id_;               // group id
-  int64_t db_id_ = 0;                      // db_id
+  std::string group_id_;                     // group id
+  int64_t db_id_ = 0;                        // db_id
   bool is_node_first_start_up_ = true;
 };
 

@@ -141,7 +141,8 @@ std::tuple<bool, int64_t> PlacementDriverServer::CheckStoreExistByIP(const std::
   DEFER { db->UnLockShared(); };
 
   std::string store_id_str;
-  auto status = db->GetStorage()->HGet(PD_STORE_ID, ip, &store_id_str);
+  // store_id_map_: <"PikiwiDB_PD_MetaData", "pd_store_id" + store ip, storeID> hash
+  auto status = db->GetStorage()->HGet(PIKIWIDB_PD_METADATA, PD_STORE_ID + ip, &store_id_str);
   if (status.ok()) {
     int64_t store_id = 0;
     if (pstd::String2int(store_id_str, &store_id) == 0) {
@@ -172,18 +173,17 @@ std::tuple<bool, int64_t> PlacementDriverServer::AddStore(const std::string& ip,
   }
 
   // 3. update
-  // store_id_map_: <"pd_store_id", store ip, storeID>
+  std::vector<storage::FieldValue> fvs;
+
+  // store_id_map_: <"PikiwiDB_PD_MetaData", "pd_store_id" + store ip, storeID> hash
   auto db = PSTORE.GetBackend(db_id_);
   db->LockShared();
   DEFER { db->UnLockShared(); };
   int temp = 0;
   auto value = pstd::Int2string(new_store_id);
-  auto status = db->GetStorage()->HSet(PD_STORE_ID, ip, value, &temp);
-  if (!status.ok()) {
-    return {false, -1};
-  }
+  fvs.push_back(storage::FieldValue(std::move(PD_STORE_ID + ip), std::move(value)));
 
-  // store_map_: <"pd_store_info", storeID, store> hash
+  // store_map_: <"PikiwiDB_PD_MetaData", "pd_store_info" + storeID, store> hash
   Store store;
   store.set_store_id(new_store_id);
   store.set_ip(ip);
@@ -193,19 +193,18 @@ std::tuple<bool, int64_t> PlacementDriverServer::AddStore(const std::string& ip,
   if (!store.SerializeToString(&store_str)) {
     return {false, -1};
   }
-  status = db->GetStorage()->HSet(PD_STORE_INFO, pstd::Int2string(new_store_id), store_str, &temp);
-  if (!status.ok()) {
-    return {false, -1};
-  }
+  fvs.push_back(storage::FieldValue(std::move(PD_STORE_INFO + pstd::Int2string(new_store_id)), std::move(store_str)));
 
-  // store_stats_map_: <"pd_store_stats", storeID, storeStats> hash
+  // store_stats_map_: <"PikiwiDB_PD_MetaData", "pd_store_stats" + storeID, storeStats> hash
   StoreStats store_stats;
   store_stats.set_store_id(new_store_id);
   std::string store_stats_str;
   if (!store_stats.SerializeToString(&store_stats_str)) {
     return {false, -1};
   }
-  status = db->GetStorage()->HSet(PD_STORE_STATS, pstd::Int2string(new_store_id), store_stats_str, &temp);
+  fvs.push_back(storage::FieldValue(std::move(PD_STORE_STATS + pstd::Int2string(new_store_id)), store_stats_str));
+
+  auto status = db->GetStorage()->HMSet(PIKIWIDB_PD_METADATA, fvs);
   if (!status.ok()) {
     return {false, -1};
   }
