@@ -6,12 +6,15 @@
  */
 
 #include "base_cmd.h"
+
 #include <fmt/format.h>
+
 #include "common.h"
 #include "config.h"
 #include "log.h"
 #include "pikiwidb.h"
 #include "praft/praft.h"
+#include "store.h"
 #include "pstd_string.h"
 
 namespace pikiwidb {
@@ -37,16 +40,17 @@ void BaseCmd::Execute(PClient* client) {
   DEBUG("execute command: {}", client->CmdName());
 
   if (g_config.use_raft.load()) {
+    auto praft = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
     // 1. If PRAFT is not initialized yet, return an error message to the client for both read and write commands.
-    if (!PRAFT.IsInitialized() && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
+    if (!praft->IsInitialized() && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
       DEBUG("drop command: {}", client->CmdName());
       return client->SetRes(CmdRes::kErrOther, "PRAFT is not initialized");
     }
 
     // 2. If PRAFT is initialized and the current node is not the leader, return a redirection message for write
     // commands.
-    if (HasFlag(kCmdFlagsWrite) && !PRAFT.IsLeader()) {
-      return client->SetRes(CmdRes::kErrOther, fmt::format("MOVED {}", PRAFT.GetLeaderAddress()));
+    if (HasFlag(kCmdFlagsWrite) && !praft->IsLeader()) {
+      return client->SetRes(CmdRes::kErrOther, fmt::format("MOVED {}", praft->GetLeaderAddress()));
     }
   }
 

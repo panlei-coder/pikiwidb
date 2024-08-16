@@ -124,6 +124,9 @@ class InfoCmd : public BaseCmd {
 
   void InfoRaft(PClient* client);
   void InfoData(PClient* client);
+
+ private:
+  PRaft* praft_ = nullptr;
 };
 
 class CmdDebug : public BaseCmdGroup {

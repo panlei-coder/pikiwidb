@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <filesystem>
+#include <memory>
 #include <string>
 
 #include "praft/praft.h"
@@ -43,6 +43,8 @@ class DB {
 
   int GetDBID() { return db_id_; }
 
+  PRaft* GetPRaft() { return praft_.get(); }
+
  private:
   const int64_t db_id_ = 0;    // region id
   const std::string db_path_;  // region path
@@ -55,7 +57,6 @@ class DB {
   std::shared_mutex storage_mutex_;
   std::unique_ptr<storage::Storage> storage_{nullptr};
   std::unique_ptr<PRaft> praft_{nullptr};
-
   bool opened_ = false;
 };
 

@@ -7,13 +7,26 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <shared_mutex>
+#include <string>
+#include <unordered_map>
+
+#include "praft/praft.h"
+#include "praft/praft_service.h"
+
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 
+#include <memory>
+#include <vector>
 #include <atomic>
 #include <shared_mutex>
 #include <unordered_map>
 
-#include "common.h"
+#include "brpc/server.h"
+#include "butil/endpoint.h"
+
 #include "db.h"
 #include "pd/pd_service.h"
 #include "praft/praft_service.h"
@@ -22,6 +35,7 @@
 #include "store_service.h"
 
 namespace pikiwidb {
+class RaftServiceImpl;
 
 enum TaskType { kCheckpoint = 0, kLoadDBFromCheckpoint, kEmpty };
 
@@ -36,12 +50,19 @@ struct TaskContext {
   bool sync = false;
   TaskContext() = delete;
   TaskContext(TaskType t, bool s = false) : type(t), sync(s) {}
-  TaskContext(TaskType t, int d, bool s = false) : type(t), db(d), sync(s) {}
-  TaskContext(TaskType t, int d, const std::map<TaskArg, std::string>& a, bool s = false)
+  TaskContext(TaskType t, uint32_t d, bool s = false) : type(t), db(d), sync(s) {}
+  TaskContext(TaskType t, uint32_t d, const std::map<TaskArg, std::string>& a, bool s = false)
       : type(t), db(d), args(a), sync(s) {}
 };
 
 using TasksVector = std::vector<TaskContext>;
+
+enum PRaftErrorCode {
+  kErrorDisMatch = 0,
+  kErrorAddNode,
+  kErrorRemoveNode,
+  kErrorReDirect,
+};
 
 class PStore {
  public:
@@ -65,13 +86,34 @@ class PStore {
 
   void HandleTaskSpecificDB(const TasksVector& tasks);
 
+  brpc::Server* GetRpcServer() const { return rpc_server_.get(); }
+
+  const butil::EndPoint& GetEndPoint() const { return endpoint_; }
+
+  /**
+   * return true if add group_id -> dbno into region_map_ success.
+   * return false if group_id -> dbno already exists in region_map_.
+   */
+  bool AddRegion(const std::string& group_id, uint32_t dbno);
+
+  /**
+   * return true if remove group_id -> dbno from region_map_ success.
+   * return false if group_id -> dbno do not exists in region_map_.
+   */
+  bool RemoveRegion(const std::string& group_id);
+
+  /**
+   * return nullptr if group_id -> dbno do not existed in region_map_.
+   */
+  DB* GetDBByGroupID(const std::string& group_id) const;
+
  private:
   PStore() = default;
 
   std::atomic<int64_t> store_id_ = {0};
 
   std::unique_ptr<brpc::Server> rpc_server_{nullptr};
-  std::unique_ptr<DummyServiceImpl> dummy_service_{nullptr};         // praft service
+  std::unique_ptr<PRaftServiceImpl> praft_service_{nullptr};         // praft service
   std::unique_ptr<PlacementDriverServiceImpl> pd_service_{nullptr};  // pd service
   std::unique_ptr<StoreServiceImpl> store_service_{nullptr};         // store service
 

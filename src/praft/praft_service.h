@@ -11,12 +11,15 @@
 
 namespace pikiwidb {
 
-class DummyServiceImpl : public DummyService {
+class PRaft;
+class PRaftServiceImpl : public PRaftService {
  public:
-  DummyServiceImpl() = default;
+  PRaftServiceImpl() = default;
+  void AddNode(::google::protobuf::RpcController* controller, const ::pikiwidb::NodeAddRequest* request,
+               ::pikiwidb::NodeAddResponse* response, ::google::protobuf::Closure* done);
 
-  void DummyMethod(::google::protobuf::RpcController* controller, const ::pikiwidb::DummyRequest* request,
-                   ::pikiwidb::DummyResponse* response, ::google::protobuf::Closure* done) override {}
+  void RemoveNode(::google::protobuf::RpcController* controller, const ::pikiwidb::NodeRemoveRequest* request,
+                  ::pikiwidb::NodeRemoveResponse* response, ::google::protobuf::Closure* done);
 };
 
 }  // namespace pikiwidb

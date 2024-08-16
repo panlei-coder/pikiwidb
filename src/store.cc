@@ -22,11 +22,11 @@
 #include "db.h"
 #include "pd.pb.h"
 #include "pd/pd_server.h"
+#include "praft/praft_service.h"
 #include "pstd/log.h"
 #include "pstd/pstd_string.h"
 
 namespace pikiwidb {
-
 PStore::~PStore() { INFO("STORE is closing..."); }
 
 PStore& PStore::Instance() {
@@ -71,9 +71,9 @@ bool PStore::InitRpcServer() {
     return false;
   }
 
-  // Add your service into RPC server
-  dummy_service_ = std::make_unique<DummyServiceImpl>();
-  if (rpc_server_->AddService(dummy_service_.get(), brpc::SERVER_OWNS_SERVICE) != 0) {
+  // Add praft service into RPC server
+  praft_service_ = std::make_unique<PRaftServiceImpl>();
+  if (rpc_server_->AddService(praft_service_.get(), brpc::SERVER_OWNS_SERVICE) != 0) {
     rpc_server_.reset();
     ERROR("Failed to add service");
     return false;
