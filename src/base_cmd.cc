@@ -6,11 +6,16 @@
  */
 
 #include "base_cmd.h"
+
+#include <fmt/format.h>
+
+#include "common.h"
 #include "config.h"
 #include "log.h"
 #include "pikiwidb.h"
 #include "praft/praft.h"
 #include "store.h"
+#include "pstd_string.h"
 
 namespace pikiwidb {
 
@@ -49,19 +54,38 @@ void BaseCmd::Execute(PClient* client) {
     }
   }
 
-  auto dbIndex = client->GetCurrentDB();
-  if (!HasFlag(kCmdFlagsExclusive)) {
-    PSTORE.GetBackend(dbIndex)->LockShared();
+  auto db_id = client->GetCurrentDB();
+  auto db = PSTORE.GetBackend(db_id);
+  if (db == nullptr) {
+    /*
+    @todo
+    Since the creation of shards through pd is not currently supported, if the shard to be accessed does not exist, the
+    operation of the shard only supports the raft command, and the creation of shards is temporarily initialized using
+    the raft.cluster init command. After pd is supported to create shards, it is logical that this command should not be
+    allowed to create shards.
+    */
+    auto cmd_name = client->CmdName();
+    pstd::StringToLower(cmd_name);
+    if (cmd_name != kCmdNameRaftCluster) {
+      return client->SetRes(CmdRes::kErrOther,
+                            fmt::format("The db of {} that the client wants to access does not exist", db_id));
+    }
+  } else {
+    if (!HasFlag(kCmdFlagsExclusive)) {
+      db->LockShared();
+    }
+
+    DEFER {
+      if (!HasFlag(kCmdFlagsExclusive)) {
+        db->UnLockShared();
+      }
+    };
   }
 
   if (!DoInitial(client)) {
     return;
   }
   DoCmd(client);
-
-  if (!HasFlag(kCmdFlagsExclusive)) {
-    PSTORE.GetBackend(dbIndex)->UnLockShared();
-  }
 }
 
 std::string BaseCmd::ToBinlog(uint32_t exec_time, uint32_t term_id, uint64_t logic_id, uint32_t filenum,

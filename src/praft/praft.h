@@ -16,6 +16,7 @@
 #include "braft/raft.h"
 #include "brpc/server.h"
 #include "rocksdb/status.h"
+#include "storage/storage.h"
 
 #include "client.h"
 
@@ -99,7 +100,7 @@ class PRaft : public braft::StateMachine {
   //===--------------------------------------------------------------------===//
   // Braft API
   //===--------------------------------------------------------------------===//
-  butil::Status Init(const std::string& group_id, bool initial_conf_is_null);
+  butil::Status Init(std::string&& group_id, bool initial_conf_is_null);
   butil::Status AddPeer(const std::string& peer);
   butil::Status AddPeer(const std::string& endpoint, int index);
   butil::Status RemovePeer(const std::string& peer);
@@ -137,6 +138,8 @@ class PRaft : public braft::StateMachine {
   std::string GetGroupID() const;
   braft::NodeStatus GetNodeStatus() const;
   butil::Status GetListPeers(std::vector<braft::PeerId>* peers);
+  storage::LogIndex GetTerm(uint64_t log_index);
+  storage::LogIndex GetLastLogIndex(bool is_flush = false);
 
   bool IsInitialized() const { return node_ != nullptr; }
 
@@ -158,8 +161,9 @@ class PRaft : public braft::StateMachine {
   std::unique_ptr<braft::Node> node_{nullptr};
   scoped_refptr<braft::FileSystemAdaptor> snapshot_adaptor_ = nullptr;
   ClusterCmdContext cluster_cmd_ctx_{this};  // context for cluster join/remove command
-  std::string group_id_;                     // group id
-  uint32_t db_id_ = 0;                       // db_id
+  std::string group_id_;               // group id
+  int64_t db_id_ = 0;                      // db_id
+  bool is_node_first_start_up_ = true;
 };
 
 }  // namespace pikiwidb

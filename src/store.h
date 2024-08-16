@@ -20,11 +20,19 @@
 
 #include <memory>
 #include <vector>
+#include <atomic>
+#include <shared_mutex>
+#include <unordered_map>
 
 #include "brpc/server.h"
 #include "butil/endpoint.h"
 
 #include "db.h"
+#include "pd/pd_service.h"
+#include "praft/praft_service.h"
+#include "pstd/pstd_status.h"
+#include "storage/storage.h"
+#include "store_service.h"
 
 namespace pikiwidb {
 class RaftServiceImpl;
@@ -64,13 +72,19 @@ class PStore {
   void operator=(const PStore&) = delete;
   ~PStore();
 
-  void Init(int db_number);
+  void Init();
+  bool InitRpcServer();
+  bool RegisterStoreToPDServer();
 
-  std::unique_ptr<DB>& GetBackend(int32_t index) { return backends_[index]; };
+  void SetStoreID(int64_t store_id) { store_id_.store(store_id, std::memory_order_relaxed); }
+
+  int64_t GetStoreID() { return store_id_.load(std::memory_order_relaxed); }
+
+  std::shared_ptr<DB> GetBackend(int64_t db_id);
+
+  pstd::Status AddBackend(int64_t db_id, std::string&& group_id);
 
   void HandleTaskSpecificDB(const TasksVector& tasks);
-
-  int GetDBNumber() const { return db_number_; }
 
   brpc::Server* GetRpcServer() const { return rpc_server_.get(); }
 
@@ -96,14 +110,17 @@ class PStore {
  private:
   PStore() = default;
 
-  int db_number_ = 0;
-  std::vector<std::unique_ptr<DB>> backends_;
-  butil::EndPoint endpoint_;
-  std::unique_ptr<PRaftServiceImpl> praft_service_{std::make_unique<PRaftServiceImpl>()};
-  std::unique_ptr<brpc::Server> rpc_server_{std::make_unique<brpc::Server>()};
+  std::atomic<int64_t> store_id_ = {0};
 
-  mutable std::shared_mutex rw_mutex_;
-  std::unordered_map<std::string, uint32_t> region_map_;
+  std::unique_ptr<brpc::Server> rpc_server_{nullptr};
+  std::unique_ptr<PRaftServiceImpl> praft_service_{nullptr};         // praft service
+  std::unique_ptr<PlacementDriverServiceImpl> pd_service_{nullptr};  // pd service
+  std::unique_ptr<StoreServiceImpl> store_service_{nullptr};         // store service
+
+  std::shared_mutex store_mutex_;
+  std::unordered_map<int64_t, std::shared_ptr<DB>> backends_table_;  // <db_id, db> / <region_id, region_engine>
+
+  std::atomic<int64_t> is_started_ = {false};
 };
 
 #define PSTORE PStore::Instance()

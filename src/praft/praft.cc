@@ -197,6 +197,24 @@ butil::Status PRaft::GetListPeers(std::vector<braft::PeerId>* peers) {
   return node_->list_peers(peers);
 }
 
+storage::LogIndex PRaft::GetTerm(uint64_t log_index) {
+  if (!node_) {
+    ERROR("Node is not initialized");
+    return 0;
+  }
+
+  return node_->get_term(log_index);
+}
+
+storage::LogIndex PRaft::GetLastLogIndex(bool is_flush) {
+  if (!node_) {
+    ERROR("Node is not initialized");
+    return 0;
+  }
+
+  return node_->get_last_log_index(is_flush);
+}
+
 void PRaft::SendNodeRequest(PClient* client) {
   assert(client);
 
@@ -521,10 +539,16 @@ butil::Status PRaft::DoSnapshot(int64_t self_snapshot_index, bool is_sync) {
   if (!node_) {
     return ERROR_LOG_AND_STATUS("Node is not initialized");
   }
-  braft::SynchronizedClosure done;
-  node_->snapshot(&done, self_snapshot_index);
-  done.wait();
-  return done.status();
+
+  if (is_sync) {
+    braft::SynchronizedClosure done;
+    node_->snapshot(&done, self_snapshot_index);
+    done.wait();
+    return done.status();
+  } else {
+    node_->snapshot(nullptr, self_snapshot_index);
+    return butil::Status{};
+  }
 }
 
 void PRaft::OnClusterCmdConnectionFailed([[maybe_unused]] EventLoop* loop, const char* peer_ip, int port) {
@@ -617,10 +641,37 @@ void PRaft::on_snapshot_save(braft::SnapshotWriter* writer, braft::Closure* done
 int PRaft::on_snapshot_load(braft::SnapshotReader* reader) {
   CHECK(!IsLeader()) << "Leader is not supposed to load snapshot";
   assert(reader);
+
+  if (is_node_first_start_up_) {
+    // get replay point of one db's
+    /*
+    1. When a node starts normally, because all memory data is flushed to disks and
+       snapshots are truncated to the latest, the flush-index and apply-index are the
+       same when the node starts, so the maximum log index should be obtained.
+    2. When a node is improperly shut down and restarted, the minimum flush-index should
+       be obtained as the starting point for fault recovery.
+    */
+    uint64_t replay_point = PSTORE.GetBackend(db_id_)->GetStorage()->GetSmallestFlushedLogIndex();
+    node_->set_self_playback_point(replay_point);
+    is_node_first_start_up_ = false;
+    INFO("set replay_point: {}", replay_point);
+
+    /*
+    If a node has just joined the cluster and does not have any data,
+    it does not load the local snapshot at startup. Therefore,
+    LoadDBFromCheckPoint is required after loading the snapshot from the leader.
+    */
+    if (GetLastLogIndex() != 0) {
+      return 0;
+    }
+  }
+
+  // 3. When a snapshot is installed on a node, you do not need to set a playback point.
   auto reader_path = reader->get_path();                             // xx/snapshot_0000001
   auto path = g_config.db_path.ToString() + std::to_string(db_id_);  // db/db_id
   TasksVector tasks(1, {TaskType::kLoadDBFromCheckpoint, db_id_, {{TaskArg::kCheckpointPath, reader_path}}, true});
   PSTORE.HandleTaskSpecificDB(tasks);
+  INFO("load snapshot success!");
   return 0;
 }
 

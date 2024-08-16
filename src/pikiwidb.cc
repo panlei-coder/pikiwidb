@@ -11,6 +11,7 @@
 #include "pikiwidb.h"
 
 #include <sys/fcntl.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <iostream>
@@ -158,7 +159,7 @@ bool PikiwiDB::Init() {
     return false;
   }
 
-  PSTORE.Init(g_config.databases.load(std::memory_order_relaxed));
+  PSTORE.Init();
 
   PSlowLog::Instance().SetThreshold(g_config.slow_log_time.load());
   PSlowLog::Instance().SetLogLimit(static_cast<std::size_t>(g_config.slow_log_max_len.load()));
@@ -171,8 +172,6 @@ bool PikiwiDB::Init() {
   if (!g_config.ip.empty()) {
     PREPL.SetMasterAddr(g_config.master_ip.ToString().c_str(), g_config.master_port.load());
   }
-
-  //  cmd_table_manager_.InitCmdTable();
 
   return true;
 }
@@ -213,6 +212,29 @@ static void InitLogs() {
 #else
   spdlog::set_level(spdlog::level::info);
 #endif
+}
+
+static int InitLimit() {
+  rlimit limit;
+  rlim_t maxfiles = g_config.max_clients;
+  if (getrlimit(RLIMIT_NOFILE, &limit) == -1) {
+    WARN("getrlimit error: {}", strerror(errno));
+  } else if (limit.rlim_cur < maxfiles) {
+    rlim_t old_limit = limit.rlim_cur;
+    limit.rlim_cur = maxfiles;
+    limit.rlim_max = maxfiles;
+    if (setrlimit(RLIMIT_NOFILE, &limit) != -1) {
+      WARN("your 'limit -n ' of {} is not enough for PikiwiDB to start. PikiwiDB have successfully reconfig it to ",
+           old_limit, limit.rlim_cur);
+    } else {
+      ERROR(
+          "your 'limit -n ' of {} is not enough for PikiwiDB to start."
+          " PikiwiDB can not reconfig it({}), do it by yourself",
+          old_limit, strerror(errno));
+      return -1;
+    }
+  }
+  return 0;
 }
 
 static void daemonize() {
@@ -257,6 +279,7 @@ int main(int ac, char* av[]) {
     daemonize();
   }
 
+  // InitLimit();
   pstd::InitRandom();
   SignalSetup();
   InitLogs();

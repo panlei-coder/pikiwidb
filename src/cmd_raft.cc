@@ -15,6 +15,7 @@
 #include "praft.pb.h"
 #include "praft/praft.h"
 #include "pstd/log.h"
+#include "pstd/pstd_status.h"
 #include "pstd/pstd_string.h"
 
 #include "client.h"

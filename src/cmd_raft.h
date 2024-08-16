@@ -10,6 +10,7 @@
 #include <string_view>
 
 #include "base_cmd.h"
+#include "client.h"
 
 namespace pikiwidb {
 class PRaft;

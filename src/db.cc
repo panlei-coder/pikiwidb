@@ -15,12 +15,29 @@ extern pikiwidb::PConfig g_config;
 
 namespace pikiwidb {
 
-DB::DB(int db_index, const std::string& db_path)
-    : db_index_(db_index),
-      db_path_(db_path + std::to_string(db_index_) + '/'),
+DB::DB(int64_t db_id, const std::string& db_path) 
+    : db_id_(db_id), 
+      db_path_(db_path + std::to_string(db_id_) + '/'), 
       praft_(std::make_unique<PRaft>(db_index)) {}
 
-DB::~DB() { INFO("DB{} is closing...", db_index_); }
+DB::~DB() { INFO("DB{} is closing...", db_id_); }
+
+pstd::Status DB::Init(std::string&& group_id) {
+  rocksdb::Status rs = Open();
+  if (!rs.ok()) {
+    return pstd::Status::Error(rs.ToString());
+  }
+
+  // @todo
+  // For now, use the global singleton PRAFT
+  // praft_ = std::make_unique<PRaft>();
+  // butil::Status bs = praft_->Init(std::move(group_id), true);
+  // if (!bs.ok()) {
+  //   return pstd::Status::Error(bs.error_str());
+  // }
+
+  return pstd::Status::OK();
+}
 
 rocksdb::Status DB::Open() {
   storage::StorageOptions storage_options;
@@ -42,7 +59,7 @@ rocksdb::Status DB::Open() {
   }
 
   storage_options.db_instance_num = g_config.db_instance_num.load();
-  storage_options.db_id = db_index_;
+  storage_options.db_id = db_id_;
 
   std::unique_ptr<storage::Storage> old_storage = std::move(storage_);
   if (old_storage != nullptr) {
@@ -57,12 +74,12 @@ rocksdb::Status DB::Open() {
   }
 
   opened_ = true;
-  INFO("Open DB{} success!", db_index_);
+  INFO("Open DB{} success!", db_id_);
   return rocksdb::Status::OK();
 }
 
 void DB::CreateCheckpoint(const std::string& checkpoint_path, bool sync) {
-  auto checkpoint_sub_path = checkpoint_path + '/' + std::to_string(db_index_);
+  auto checkpoint_sub_path = checkpoint_path + '/' + std::to_string(db_id_);
   if (0 != pstd::CreatePath(checkpoint_sub_path)) {
     WARN("Create dir {} fail !", checkpoint_sub_path);
     return;
@@ -78,7 +95,7 @@ void DB::CreateCheckpoint(const std::string& checkpoint_path, bool sync) {
 }
 
 void DB::LoadDBFromCheckpoint(const std::string& checkpoint_path, bool sync [[maybe_unused]]) {
-  auto checkpoint_sub_path = checkpoint_path + '/' + std::to_string(db_index_);
+  auto checkpoint_sub_path = checkpoint_path + '/' + std::to_string(db_id_);
   if (0 != pstd::IsDir(checkpoint_sub_path)) {
     WARN("Checkpoint dir {} does not exist!", checkpoint_sub_path);
     return;
@@ -92,6 +109,13 @@ void DB::LoadDBFromCheckpoint(const std::string& checkpoint_path, bool sync [[ma
 
   std::lock_guard<std::shared_mutex> lock(storage_mutex_);
   opened_ = false;
+  // close the old storage, then open the new storage
+  std::unique_ptr<storage::Storage> old_storage = std::move(storage_);
+  if (old_storage != nullptr) {
+    old_storage->Close();
+    old_storage.reset();
+  }
+  storage_ = std::make_unique<storage::Storage>();
   auto result = storage_->LoadCheckpoint(checkpoint_sub_path, db_path_);
 
   for (auto& r : result) {
@@ -101,7 +125,7 @@ void DB::LoadDBFromCheckpoint(const std::string& checkpoint_path, bool sync [[ma
   storage::StorageOptions storage_options;
   storage_options.options = g_config.GetRocksDBOptions();
   storage_options.db_instance_num = g_config.db_instance_num.load();
-  storage_options.db_id = db_index_;
+  storage_options.db_id = db_id_;
 
   // options for CF
   storage_options.options.ttl = g_config.rocksdb_ttl_second.load(std::memory_order_relaxed);
@@ -115,14 +139,18 @@ void DB::LoadDBFromCheckpoint(const std::string& checkpoint_path, bool sync [[ma
       return r.DoSnapshot(self_snapshot_index, is_sync);
     };
   }
-  storage_ = std::make_unique<storage::Storage>();
 
   if (auto s = storage_->Open(storage_options, db_path_); !s.ok()) {
     ERROR("Storage open failed! {}", s.ToString());
     abort();
   }
 
+  // in single-mode, pikiwidb will enable wal
+  if (!g_config.use_raft.load(std::memory_order_relaxed)) {
+    storage_->DisableWal(false);
+  }
+
   opened_ = true;
-  INFO("DB{} load a checkpoint from {} success!", db_index_, checkpoint_path);
+  INFO("DB{} load a checkpoint from {} success!", db_id_, checkpoint_path);
 }
 }  // namespace pikiwidb

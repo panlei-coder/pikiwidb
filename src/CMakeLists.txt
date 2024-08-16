@@ -3,11 +3,23 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
+ADD_CUSTOM_COMMAND(
+  OUTPUT "${PROTO_OUTPUT_DIR}/store.pb.cc"
+  DEPENDS protobuf
+  COMMAND ${PROTOBUF_PROTOC}
+  ARGS -I ${CMAKE_CURRENT_SOURCE_DIR}
+    --cpp_out ${PROTO_OUTPUT_DIR}
+    store.proto
+)
+ADD_LIBRARY(store_pb STATIC "${PROTO_OUTPUT_DIR}/store.pb.cc")
+SET(LIBRARY_OUTPUT_PATH ${PLIB_INSTALL_DIR})
+TARGET_INCLUDE_DIRECTORIES(store_pb PRIVATE ${PROTOBUF_INCLUDE_DIR})
+
 AUX_SOURCE_DIRECTORY(. PIKIWIDB_SRC)
 
 ADD_EXECUTABLE(pikiwidb ${PIKIWIDB_SRC})
 
-IF(CMAKE_BUILD_TYPE STREQUAL "Release")
+IF (CMAKE_BUILD_TYPE STREQUAL "Release")
     # get current date and time and git commit id
     EXECUTE_PROCESS(COMMAND date "+%Y-%m-%d_%H:%M:%S" OUTPUT_VARIABLE BUILD_TIMESTAMP OUTPUT_STRIP_TRAILING_WHITESPACE)
     EXECUTE_PROCESS(COMMAND git rev-parse HEAD OUTPUT_VARIABLE GIT_COMMIT_ID OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -16,7 +28,7 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     MESSAGE(STATUS "Git commit id: ${GIT_COMMIT_ID}")
 
     TARGET_COMPILE_DEFINITIONS(pikiwidb PRIVATE KPIKIWIDB_BUILD_DATE="${BUILD_TIMESTAMP}" KPIKIWIDB_GIT_COMMIT_ID="${GIT_COMMIT_ID}")
-ENDIF()
+ENDIF ()
 
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
@@ -29,9 +41,55 @@ TARGET_INCLUDE_DIRECTORIES(pikiwidb
         PRIVATE ${rocksdb_SOURCE_DIR}/include
         PRIVATE ${BRAFT_INCLUDE_DIR}
         PRIVATE ${BRPC_INCLUDE_DIR}
+        PRIVATE ${LIBEVENT_INCLUDE_DIRS}
         PRIVATE ${PROTO_OUTPUT_DIR}
-        )
+)
 
-TARGET_LINK_LIBRARIES(pikiwidb net; dl; fmt; storage; rocksdb; pstd braft brpc ssl crypto zlib protobuf leveldb gflags z praft praft_pb "${LIB}")
+ADD_DEPENDENCIES(pikiwidb
+        gflags
+        gtest
+        fmt
+        snappy
+        zlib
+        rocksdb
+        protobuf
+        pstd
+        braft
+        brpc
+        storage
+        store_pb
+        pd_pb
+        praft_pb
+        binlog_pb
+)
+
+TARGET_LINK_LIBRARIES(pikiwidb
+        net
+        dl
+        fmt
+        rocksdb
+        snappy
+        lz4
+        zstd
+        storage
+        gflags
+        spdlog
+        pstd
+        braft
+        brpc
+        ssl
+        crypto
+        zlib
+        protobuf
+        leveldb
+        z
+        pd
+        praft
+        store_pb
+        pd_pb
+        praft_pb
+        binlog_pb
+        "${LIB}"
+)
 
 SET_TARGET_PROPERTIES(pikiwidb PROPERTIES LINKER_LANGUAGE CXX)

@@ -11,14 +11,19 @@
 #include <string>
 
 #include "praft/praft.h"
+#include "pstd/log.h"
+#include "pstd/noncopyable.h"
+#include "pstd/pstd_status.h"
 #include "storage/storage.h"
 
 namespace pikiwidb {
 
 class DB {
  public:
-  DB(int db_index, const std::string& db_path);
+  DB(int64_t db_id, const std::string& db_path);
   ~DB();
+
+  pstd::Status Init(std::string&& group_id);
 
   rocksdb::Status Open();
 
@@ -36,13 +41,13 @@ class DB {
 
   void LoadDBFromCheckpoint(const std::string& path, bool sync = true);
 
-  int GetDbIndex() { return db_index_; }
+  int GetDBID() { return db_id_; }
 
   PRaft* GetPRaft() { return praft_.get(); }
 
  private:
-  const int db_index_ = 0;
-  const std::string db_path_;
+  const int64_t db_id_ = 0;    // region id
+  const std::string db_path_;  // region path
   /**
    * If you want to change the pointer that points to storage,
    * you must first acquire a mutex lock.
@@ -50,7 +55,7 @@ class DB {
    * you just need to obtain a shared lock.
    */
   std::shared_mutex storage_mutex_;
-  std::unique_ptr<storage::Storage> storage_;
+  std::unique_ptr<storage::Storage> storage_{nullptr};
   std::unique_ptr<PRaft> praft_{nullptr};
   bool opened_ = false;
 };
