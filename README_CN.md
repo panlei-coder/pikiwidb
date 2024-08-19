@@ -6,7 +6,6 @@ C++20 实现的增强版 Redis 服务器,使用 RocksDB 作为持久化存储引
 
 ## 环境需求
 
-* C++20、CMake
 * Linux 或 MAC OS 或 FreeBSD
 
 ## 编译
@@ -15,14 +14,12 @@ C++20 实现的增强版 Redis 服务器,使用 RocksDB 作为持久化存储引
 
 执行编译:
 
-如果机器的 GCC 版本低于 11，特别是在 CentOS 6.x 或 CentOS 7.x 上，你需要先升级 GCC 版本。
-
-在 CentOS 上执行以下命令:
+在 Rocky Linux 下执行如下的指令：
 
 ```bash
-sudo yum -y install centos-release-scl
-sudo yum -y install devtoolset-11-gcc devtoolset-11-gcc-c++
-scl enable devtoolset-11 bash
+sudo dnf groupinstall -y 'Development Tools'
+sudo dnf install cmake g++ autoconf perl -y
+git config --global http.version HTTP/1.1
 ```
 
 执行以下命令开始编译 PikiwiDB:
