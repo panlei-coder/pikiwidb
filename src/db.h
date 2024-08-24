@@ -57,6 +57,11 @@ class DB {
   std::shared_mutex storage_mutex_;
   std::unique_ptr<storage::Storage> storage_{nullptr};
   std::unique_ptr<PRaft> praft_{nullptr};
+
+  // Region key range [startKey, endKey)
+  std::string start_key_;
+  std::string end_key_;
+
   bool opened_ = false;
 };
 

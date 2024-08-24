@@ -41,23 +41,31 @@ void BaseCmd::Execute(PClient* client) {
 
   if (g_config.use_raft.load()) {
     // @todo need to find region by key
-    auto& praft = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
-    // 1. If PRAFT is not initialized yet, return an error message to the client for both read and write commands.
-    if (!praft->IsInitialized() && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
-      DEBUG("drop command: {}", client->CmdName());
-      return client->SetRes(CmdRes::kErrOther, "PRAFT is not initialized");
-    }
+    auto db = PSTORE.GetBackend(client->GetCurrentDB());
+    if (!db) {
+      if (!(HasFlag(kCmdFlagsAdmin) || HasFlag(kCmdFlagsFast) || HasFlag(kCmdFlagsRaft))) {
+        return client->SetRes(CmdRes::kErrOther, "The region is not exist!");
+      }
+    } else {
+      auto& praft = db->GetPRaft();
 
-    // 2. If PRAFT is initialized and the current node is not the leader, return a redirection message for write
-    // commands.
-    if (HasFlag(kCmdFlagsWrite) && !praft->IsLeader()) {
-      return client->SetRes(CmdRes::kErrOther, fmt::format("MOVED {}", praft->GetLeaderAddress()));
+      // 1. If PRAFT is not initialized yet, return an error message to the client for both read and write commands.
+      if (!praft->IsInitialized() && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
+        DEBUG("drop command: {}", client->CmdName());
+        return client->SetRes(CmdRes::kErrOther, "PRAFT is not initialized");
+      }
+
+      // 2. If PRAFT is initialized and the current node is not the leader, return a redirection message for write
+      // commands.
+      if (HasFlag(kCmdFlagsWrite) && !praft->IsLeader()) {
+        return client->SetRes(CmdRes::kErrOther, fmt::format("MOVED {}", praft->GetLeaderAddress()));
+      }
     }
   }
 
   auto db_id = client->GetCurrentDB();
   auto db = PSTORE.GetBackend(db_id);
-  if (db == nullptr) {
+  if (!db) {
     /*
     @todo
     Since the creation of shards through pd is not currently supported, if the shard to be accessed does not exist, the
@@ -65,9 +73,7 @@ void BaseCmd::Execute(PClient* client) {
     the raft.cluster init command. After pd is supported to create shards, it is logical that this command should not be
     allowed to create shards.
     */
-    auto cmd_name = client->CmdName();
-    pstd::StringToLower(cmd_name);
-    if (cmd_name != kCmdNameRaftCluster) {
+    if (!(HasFlag(kCmdFlagsAdmin) || HasFlag(kCmdFlagsFast) || HasFlag(kCmdFlagsRaft))) {
       return client->SetRes(CmdRes::kErrOther,
                             fmt::format("The db of {} that the client wants to access does not exist", db_id));
     }

@@ -195,9 +195,12 @@ bool RaftClusterCmd::DoInitial(PClient* client) {
 }
 
 void RaftClusterCmd::DoCmd(PClient* client) {
-  auto& praft = PSTORE.GetBackend(client->GetCurrentDB())->GetPRaft();
-  if (praft->IsInitialized()) {
-    return client->SetRes(CmdRes::kErrOther, "Already cluster member");
+  auto db = PSTORE.GetBackend(client->GetCurrentDB());
+  if (db) {
+    auto& praft = db->GetPRaft();
+    if (praft->IsInitialized()) {
+      return client->SetRes(CmdRes::kErrOther, "Already cluster member");
+    }
   }
 
   auto cmd = client->argv_[1];
@@ -277,9 +280,9 @@ void RaftClusterCmd::DoCmdJoin(PClient* client) {
   NodeAddRequest request;
   NodeAddResponse response;
 
-  auto end_point = butil::endpoint2str(PSTORE.GetEndPoint()).c_str();
+  auto end_point = std::string(butil::endpoint2str(PSTORE.GetEndPoint()).c_str());
   request.set_group_id(group_id);
-  request.set_endpoint(std::string(end_point));
+  request.set_endpoint(end_point);
   request.set_index(client->GetCurrentDB());
   request.set_role(0);
 

@@ -26,7 +26,7 @@ pstd::Status DB::Init(std::string&& group_id) {
     return pstd::Status::Error(rs.ToString());
   }
 
-  butil::Status bs = praft_->Init(std::move(group_id), true);
+  butil::Status bs = praft_->Init(std::move(group_id), false);
   if (!bs.ok()) {
     return pstd::Status::Error(bs.error_str());
   }
