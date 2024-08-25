@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-present, Qihoo, Inc.  All rights reserved.
+ * Copyright (c) 2023-present, OpenAtom Foundation, Inc.  All rights reserved.
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
@@ -15,6 +15,8 @@
 #include <shared_mutex>
 #include <string>
 #include <vector>
+
+#include "unbounded_buffer.h"
 
 #define CRLF "\r\n"
 
@@ -57,8 +59,6 @@ extern struct PErrorInfo {
 } g_errorInfo[];
 
 int StrToLongDouble(const char* s, size_t slen, long double* ldval);
-
-class UnboundedBuffer;
 
 std::size_t FormatInt(long value, UnboundedBuffer* reply);
 std::size_t FormatBulk(const char* str, std::size_t len, UnboundedBuffer* reply);

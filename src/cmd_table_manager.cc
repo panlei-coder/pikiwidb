@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-present, Qihoo, Inc.  All rights reserved.
+ * Copyright (c) 2023-present, OpenAtom Foundation, Inc.  All rights reserved.
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
@@ -17,6 +17,7 @@
 #include "cmd_raft.h"
 #include "cmd_set.h"
 #include "cmd_zset.h"
+#include "pstd_string.h"
 
 namespace pikiwidb {
 
@@ -57,6 +58,7 @@ void CmdTableManager::InitCmdTable() {
   ADD_SUBCOMMAND(Debug, Help, 2);
   ADD_SUBCOMMAND(Debug, OOM, 2);
   ADD_SUBCOMMAND(Debug, Segfault, 2);
+  ADD_COMMAND(Sort, -2);
 
   // server
   ADD_COMMAND(Flushdb, 1);
@@ -189,16 +191,16 @@ std::pair<BaseCmd*, CmdRes::CmdRet> CmdTableManager::GetCommand(const std::strin
   auto cmd = cmds_->find(cmdName);
 
   if (cmd == cmds_->end()) {
-    return std::pair(nullptr, CmdRes::kSyntaxErr);
+    return std::pair(nullptr, CmdRes::kUnknownCmd);
   }
 
   if (cmd->second->HasSubCommand()) {
     if (client->argv_.size() < 2) {
       return std::pair(nullptr, CmdRes::kInvalidParameter);
     }
-    return std::pair(cmd->second->GetSubCmd(client->argv_[1]), CmdRes::kSyntaxErr);
+    return std::pair(cmd->second->GetSubCmd(pstd::StringToLower(client->argv_[1])), CmdRes::kUnknownSubCmd);
   }
-  return std::pair(cmd->second.get(), CmdRes::kSyntaxErr);
+  return std::pair(cmd->second.get(), CmdRes::kOK);
 }
 
 bool CmdTableManager::CmdExist(const std::string& cmd) const {

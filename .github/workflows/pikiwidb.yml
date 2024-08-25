@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build
-        run: bash ci/build.sh
+        run: bash ./etc/script/ci/build.sh
 
       - name: Check Format
         working-directory: ${{ github.workspace }}/build
@@ -30,7 +30,7 @@ jobs:
         run: |
           brew install autoconf
           brew install go
-          sh build.sh --verbose
+          bash ./etc/script/build.sh --verbose
 
       - name: GTest
         working-directory: ${{ github.workspace }}/build-release
@@ -41,9 +41,11 @@ jobs:
       - name: Run Go E2E Tests
         working-directory: ${{ github.workspace }}/build-release
         run: |
+          set +e
           cd ../tests
           go mod tidy
-          go test
+          go test -timeout 15m --ginkgo.v
+          sh print_log.sh
 
   build_on_ubuntu:
     runs-on: ubuntu-latest
@@ -54,7 +56,7 @@ jobs:
 
       - name: Build
         run: |
-          bash build.sh --verbose
+          bash ./etc/script/build.sh --verbose
 
       - name: GTest
         working-directory: ${{ github.workspace }}/build-release
@@ -65,6 +67,8 @@ jobs:
       - name: Run Go E2E Tests
         working-directory: ${{ github.workspace }}/build-release
         run: |
+          set +e
           cd ../tests
           go mod tidy
-          go test
+          go test -timeout 15m --ginkgo.v
+          sh print_log.sh

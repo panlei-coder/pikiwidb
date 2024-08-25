@@ -1,11 +1,16 @@
 /*
- * Copyright (c) 2023-present, Qihoo, Inc.  All rights reserved.
+ * Copyright (c) 2023-present, OpenAtom Foundation, Inc.  All rights reserved.
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
 #include "base_cmd.h"
+
+#include "fmt/core.h"
+
+#include "praft/praft.h"
+
 #include "common.h"
 #include "config.h"
 #include "log.h"
@@ -34,17 +39,19 @@ std::vector<std::string> BaseCmd::CurrentKey(PClient* client) const { return std
 void BaseCmd::Execute(PClient* client) {
   DEBUG("execute command: {}", client->CmdName());
 
-  if (g_config.use_raft.load()) {
-    // 1. If PRAFT is not initialized yet, return an error message to the client for both read and write commands.
-    if (!PRAFT.IsInitialized() && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
-      DEBUG("drop command: {}", client->CmdName());
+  // read consistency (lease read) / write redirection
+  if (g_config.use_raft.load(std::memory_order_relaxed) && (HasFlag(kCmdFlagsReadonly) || HasFlag(kCmdFlagsWrite))) {
+    if (!PRAFT.IsInitialized()) {
       return client->SetRes(CmdRes::kErrOther, "PRAFT is not initialized");
     }
 
-    // 2. If PRAFT is initialized and the current node is not the leader, return a redirection message for write
-    // commands.
-    if (HasFlag(kCmdFlagsWrite) && !PRAFT.IsLeader()) {
-      return client->SetRes(CmdRes::kErrOther, fmt::format("MOVED {}", PRAFT.GetLeaderAddress()));
+    if (!PRAFT.IsLeader()) {
+      auto leader_addr = PRAFT.GetLeaderAddress();
+      if (leader_addr.empty()) {
+        return client->SetRes(CmdRes::kErrOther, std::string("-CLUSTERDOWN No Raft leader"));
+      }
+
+      return client->SetRes(CmdRes::kErrOther, fmt::format("-MOVED {}", leader_addr));
     }
   }
 
@@ -52,15 +59,16 @@ void BaseCmd::Execute(PClient* client) {
   if (!HasFlag(kCmdFlagsExclusive)) {
     PSTORE.GetBackend(dbIndex)->LockShared();
   }
+  DEFER {
+    if (!HasFlag(kCmdFlagsExclusive)) {
+      PSTORE.GetBackend(dbIndex)->UnLockShared();
+    }
+  };
 
   if (!DoInitial(client)) {
     return;
   }
   DoCmd(client);
-
-  if (!HasFlag(kCmdFlagsExclusive)) {
-    PSTORE.GetBackend(dbIndex)->UnLockShared();
-  }
 }
 
 std::string BaseCmd::ToBinlog(uint32_t exec_time, uint32_t term_id, uint64_t logic_id, uint32_t filenum,
@@ -99,7 +107,7 @@ BaseCmd* BaseCmdGroup::GetSubCmd(const std::string& cmdName) {
 bool BaseCmdGroup::DoInitial(PClient* client) {
   client->SetSubCmdName(client->argv_[1]);
   if (!subCmds_.contains(client->SubCmdName())) {
-    client->SetRes(CmdRes::kSyntaxErr, client->argv_[0] + " unknown subcommand for '" + client->SubCmdName() + "'");
+    client->SetRes(CmdRes::kErrOther, client->argv_[0] + " unknown subcommand for '" + client->SubCmdName() + "'");
     return false;
   }
   return true;

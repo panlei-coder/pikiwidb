@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-present, Qihoo, Inc.  All rights reserved.
+ * Copyright (c) 2023-present, OpenAtom Foundation, Inc.  All rights reserved.
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
@@ -23,7 +23,7 @@ namespace pikiwidb {
 // then submit the task to the thread pool
 class CmdThreadPoolTask {
  public:
-  CmdThreadPoolTask(std::shared_ptr<PClient> client) : client_(std::move(client)) {}
+  explicit CmdThreadPoolTask(std::shared_ptr<PClient> client) : client_(std::move(client)) {}
   void Run(BaseCmd *cmd);
   const std::string &CmdName();
   std::shared_ptr<PClient> Client();

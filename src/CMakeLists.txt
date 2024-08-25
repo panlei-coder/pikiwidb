@@ -1,4 +1,4 @@
-# Copyright (c) 2023-present, Qihoo, Inc.  All rights reserved.
+# Copyright (c) 2023-present, OpenAtom Foundation, Inc.  All rights reserved.
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
@@ -18,7 +18,8 @@ IF (CMAKE_BUILD_TYPE STREQUAL "Release")
     TARGET_COMPILE_DEFINITIONS(pikiwidb PRIVATE KPIKIWIDB_BUILD_DATE="${BUILD_TIMESTAMP}" KPIKIWIDB_GIT_COMMIT_ID="${GIT_COMMIT_ID}")
 ENDIF ()
 
-SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+# SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin/)
 
 TARGET_INCLUDE_DIRECTORIES(pikiwidb
         PRIVATE ${PROJECT_SOURCE_DIR}/src

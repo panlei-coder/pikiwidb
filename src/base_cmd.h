@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-present, Qihoo, Inc.  All rights reserved.
+ * Copyright (c) 2023-present, OpenAtom Foundation, Inc.  All rights reserved.
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
@@ -10,6 +10,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <set>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -88,6 +89,7 @@ const std::string kSubCmdNameDebugHelp = "help";
 const std::string kSubCmdNameDebugOOM = "oom";
 const std::string kSubCmdNameDebugSegfault = "segfault";
 const std::string kCmdNameInfo = "info";
+const std::string kCmdNameSort = "sort";
 
 // hash cmd
 const std::string kCmdNameHSet = "hset";
@@ -353,7 +355,7 @@ class BaseCmdGroup : public BaseCmd {
   BaseCmd* GetSubCmd(const std::string& cmdName) override;
 
   // group cmd this function will not be called
-  void DoCmd(PClient* client) override{};
+  void DoCmd(PClient* client) override {}
 
   // group cmd this function will not be called
   bool DoInitial(PClient* client) override;
