@@ -91,17 +91,15 @@ braft::FileAdaptor* PPosixFileSystemAdaptor::open(const std::string& path, int o
       braft::ConfigurationEntry learner_conf_entry;
       PRAFT.GetConfigurationByIndex(last_log_index, &conf_entry, &learner_conf_entry);
       new_meta.clear_peers();
-      for (braft::Configuration::const_iterator iter = conf_entry.conf.begin(); iter != conf_entry.conf.end(); ++iter) {
+      for (auto iter = conf_entry.conf.begin(); iter != conf_entry.conf.end(); ++iter) {
         *new_meta.add_peers() = iter->to_string();
       }
       new_meta.clear_old_peers();
-      for (braft::Configuration::const_iterator iter = conf_entry.old_conf.begin(); iter != conf_entry.old_conf.end();
-           ++iter) {
+      for (auto iter = conf_entry.old_conf.begin(); iter != conf_entry.old_conf.end(); ++iter) {
         *new_meta.add_old_peers() = iter->to_string();
       }
       new_meta.clear_learners();
-      for (braft::Configuration::const_iterator iter = learner_conf_entry.conf.begin();
-           iter != learner_conf_entry.conf.end(); ++iter) {
+      for (auto iter = learner_conf_entry.conf.begin(); iter != learner_conf_entry.conf.end(); ++iter) {
         *new_meta.add_learners() = iter->to_string();
       }
       INFO("Succeed to fix db_{} snapshot meta: {}, {}", db_id, last_log_index, last_log_term);
